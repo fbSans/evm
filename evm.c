@@ -172,8 +172,7 @@ void dump_stack(Stack *s){
     printf("\n");
 }
 
-void evm_run(Evm *evm){
-    
+void evm_run(Evm *evm){  
     while(true){
         EVM_INST inst = evm_next_inst(evm);
        
@@ -384,6 +383,7 @@ void testFib(void)
     
     evm_init(&evm, program);
     evm_run(&evm);
+    evm_free(&evm);
     free(program.items);
 }
 
