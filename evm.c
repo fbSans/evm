@@ -253,7 +253,7 @@ void evm_run(Evm *evm){
             } 
             break;
             case EVM_INST_WRITE64:{
-                Addr dst = evm_pop(evm);
+                Addr dst = (Addr) evm_pop(evm);
                 Data a = evm_pop(evm);
                 evm_write(evm, dst, a);
             } 
@@ -264,7 +264,7 @@ void evm_run(Evm *evm){
             }
             break;
             case EVM_INST_PUTS: {
-                Data ptr = evm_pop(evm);
+                Addr ptr = (Addr) evm_pop(evm);
                 Data size = evm_pop(evm);
                 fwrite(&evm->memory[ptr], size, 1, stdout);
             }
@@ -274,7 +274,7 @@ void evm_run(Evm *evm){
             }
             case EVM_INST_JC: {
                 Data cond = evm_pop(evm);
-                Data new_ip = evm_pop(evm);
+                Addr new_ip = (Addr) evm_pop(evm);
                 if(cond){
                     evm->ip = new_ip;
                 }
