@@ -197,15 +197,15 @@ void evm_run(Evm *evm){
             }
             break;
             case EVM_INST_ADDU:{
-                Data a = (Data) evm_pop(evm);
-                Data b = (Data) evm_pop(evm);  
+                Data a = evm_pop(evm);
+                Data b = evm_pop(evm);  
                 Data s = b + a;
                 evm_push(evm, s);
             }
             break;
             case EVM_INST_SUBU:{
-                Data a = (Data) evm_pop(evm);
-                Data b = (Data) evm_pop(evm);  
+                Data a = evm_pop(evm);
+                Data b = evm_pop(evm);  
                 Data s = b - a;
                 evm_push(evm, s);
             } 
@@ -260,7 +260,7 @@ void evm_run(Evm *evm){
             } 
             break;
             case EVM_INST_PRINTU: {
-                Data a = (Data) evm_pop(evm);
+                Data a = evm_pop(evm);
                 printf("%zu", a);
             }
             break;
