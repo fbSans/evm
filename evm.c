@@ -304,32 +304,11 @@ void evm_run(Evm *evm){
     }
 }
 
-int main(void) 
+void testFib(void) 
 {
     Evm evm = {0};
     Insts program = {0};
 
-    // GT
-    // da_append(&program, EVM_INST_PUSH);
-    // da_append(&program, 1U);
-    // da_append(&program, EVM_INST_PUSH);
-    // da_append(&program, 3U);
-    // da_append(&program, EVM_INST_GT);
-    // da_append(&program, EVM_INST_PRINTU);
-    // da_append(&program, EVM_INST_HALT);
-   
-    // ADD
-    // da_append(&program, EVM_INST_PUSH);
-    // da_append(&program, 1U);
-    // da_append(&program, EVM_INST_PUSH);
-    // da_append(&program, 3U);
-    // da_append(&program, EVM_INST_ADDU);
-    // da_append(&program, EVM_INST_PRINTU);
-    // da_append(&program, EVM_INST_HALT);
-
-    //FIB
-
-   
     //push 'newline'
     da_append(&program, EVM_INST_PUSH);
     da_append(&program, (Data) (0x0a0a0a0au));
@@ -406,5 +385,10 @@ int main(void)
     evm_init(&evm, program);
     evm_run(&evm);
     free(program.items);
+}
+
+int main(void) 
+{
+    testFib();
     return 0;
 }
