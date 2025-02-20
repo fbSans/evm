@@ -1,0 +1,4 @@
+push 1
+dup 0
+add
+halt
