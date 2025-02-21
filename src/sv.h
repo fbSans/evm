@@ -32,6 +32,7 @@ Sv sv_take_until(Sv *sv, bool(*pred)(char));
 Sv sv_take_until_char(Sv *sv, char c);
 Sv sv_next_line(Sv *sv);
 Sv sv_substr(Sv sv, size_t start, size_t end);
+Sv sv_chop_left(Sv *sv);
 
 
 bool sv_eq(const Sv sv1, const Sv sv2);
@@ -155,6 +156,10 @@ Sv sv_substr(Sv sv, size_t start, size_t end)
     Sv res = sv_from_parts(sv.data + start, end - start);
     
     return res;
+}
+
+Sv sv_chop_left(Sv *sv){
+    return sv_take_until(sv, _isspace);
 }
 
 bool sv_eq(const Sv sv1, const Sv sv2)
