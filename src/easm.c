@@ -176,9 +176,10 @@ Sv slurp_file(const char *filepath){
         fprintf(stderr, "Could not tell file size on %s: %s\n", filepath, strerror(errno));
         exit(1); 
     }
-    
+
     fseek(f, 0, SEEK_SET);
-    char *data = malloc(n);
+    char *data = malloc(n + 1);
+    data[n] = '\0';
     assert(data != NULL);
 
     size_t m = fread(data, 1, n, f);
@@ -210,8 +211,8 @@ int main(int argc, char **argv){
     Evm evm = {0};
     evm_init(&evm, evm_program);
     evm_run(&evm);
+    
     evm_free(&evm);
-   
     free(evm_program.items);
     free(easm_tokens.items);
     free((char *) src.data);
