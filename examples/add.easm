@@ -1,4 +1,6 @@
 push 1
 dup 0
-add
+addu
+dup 0
+printu64
 halt

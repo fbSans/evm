@@ -92,6 +92,7 @@ typedef struct {
 } Evm;
 
 void evm_init(Evm *evm, Evm_Insts program);
+void evm_run(Evm *evm);
 void evm_free(Evm* evm);
 
 

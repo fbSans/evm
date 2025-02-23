@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <assert.h>
 #include <errno.h>
 
@@ -13,7 +14,7 @@
 #define EASM_COMMENT ";"
 
 char *easm_instrunctions[] = {
-    "push", "dup", "add", "halt",
+    "push", "dup", "addu", "printu64","halt",
 };
 
 int is_easm_opcode(Sv name) {
@@ -37,6 +38,7 @@ typedef struct {
         int64_t offset;
         uint64_t address;
     } as;
+    const char *filepath;
     size_t row;
     size_t col;
 } Easm_Token;
@@ -86,12 +88,11 @@ void easm_tokenize(Sv src, Easm_Tokens *tokens, const char *filepath)
         sv_trim_left(&line);
         if(line.size == 0 || sv_starts_with(line, sv_from_cstr(EASM_COMMENT))) continue;
 
-        Easm_Token token = {.row = row, .col = line.data - line_start + 1};
+        Easm_Token token = {.filepath = filepath, .row = row, .col = line.data - line_start + 1};
         Sv opcode = sv_chop_left(&line);
         sv_trim_left(&line);
         
         if(is_easm_opcode(opcode)){
-            printf("Opcode: "SV_FMT"    | Operand: "SV_FMT"\n", SV_ARG(opcode), SV_ARG(line));
             token.name = opcode;
     
             //Instructions with opernads
@@ -104,8 +105,14 @@ void easm_tokenize(Sv src, Easm_Tokens *tokens, const char *filepath)
                 } 
                 token.as.data = num_operand;   
             }
+            //printf("Opcode: "SV_FMT"    | Operand: %zu\n", SV_ARG(opcode), token.as.data);
         } else {
-            log_error_and_exit("Unknown opcode", filepath, row, opcode.data - line_start + 1);
+            char message[1024] = {0};
+            char *start = "Unknown opcode: ";
+            size_t start_size = strlen(start);
+            memcpy(message, start, start_size);
+            memcpy(message + start_size, opcode.data, opcode.size);
+            log_error_and_exit(message, filepath, row, opcode.data - line_start + 1);
         }
        
         //TODO: Handle jump instructions containg labels and numbers
@@ -117,9 +124,29 @@ void easm_tokenize(Sv src, Easm_Tokens *tokens, const char *filepath)
 }
 
 //Tokens here must be all corresponding to instructions
-void easm_parse(Easm_Tokens tokens, Evm_Insts program){
-    while(tokens.size > 0){
-
+void easm_parse(Easm_Tokens tokens, Evm_Insts *program){
+    for(size_t i = 0; i < tokens.size ; ++i){
+        Easm_Token token = tokens.items[i];
+        if(sv_eq(token.name, sv_from_cstr("push"))){
+            da_append(program, EVM_INST_PUSH);
+            da_append(program, token.as.data);
+        } else if(sv_eq(token.name, sv_from_cstr("dup"))) {
+            da_append(program, EVM_INST_DUP);
+            da_append(program, token.as.data);
+        } else if(sv_eq(token.name, sv_from_cstr("addu"))) {
+            da_append(program, EVM_INST_ADDU);
+        }  else if(sv_eq(token.name, sv_from_cstr("printu64"))) {
+            da_append(program, EVM_INST_PRINTU);
+        }  else if(sv_eq(token.name, sv_from_cstr("halt"))) {
+            da_append(program, EVM_INST_HALT);
+        } else {
+            char message[1024] = {0};
+            char *start = "Unknown opcode: ";
+            size_t start_size = strlen(start);
+            memcpy(message, start, start_size);
+            memcpy(message + start_size, token.name.data, token.name.size);
+            log_error_and_exit(message, token.filepath, token.row, token.col);
+        }
     }
 }
 
@@ -153,15 +180,16 @@ char *slurp_file(const char *filepath){
     fseek(f, 0, SEEK_SET);
     
     char *res = malloc(n);
+    assert(res != NULL);
+
     size_t m = fread(res, 1, n, f);
     while(m < (size_t) n){
         m += fread(res + m, n, 1, f);
     }
+
+    if(f) fclose(f);
     return res;
 }
-
-
-
 
 int main(int argc, char **argv){
     const char *program = shift_args(&argc, &argv);
@@ -173,9 +201,23 @@ int main(int argc, char **argv){
     
     const char *filepath = shift_args(&argc, &argv);
     char *content = slurp_file(filepath);
+    
+    //Resolve: Invalid read of size 1 from valgrind report
     Sv src = sv_from_cstr(content);
 
-    Easm_Tokens tokens = {0};
-    easm_tokenize(src, &tokens, filepath);
-    return 0;
+    Easm_Tokens easm_tokens = {0};
+    Evm_Insts evm_program = {0};
+    easm_tokenize(src, &easm_tokens, filepath);
+    easm_parse(easm_tokens, &evm_program);
+   
+    Evm evm = {0};
+    evm_init(&evm, evm_program);
+    evm_run(&evm);
+    evm_free(&evm);
+   
+    free(evm_program.items);
+    free(easm_tokens.items);
+    free(content);
+
+   return 0;
 }

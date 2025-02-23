@@ -311,8 +311,10 @@ void testFib(void)
     free(program.items);
 }
 
+#ifdef EVM_DEBUG
 int main(void) 
 {
     testFib();
     return 0;
 }
+#endif //EVM_DEBUG

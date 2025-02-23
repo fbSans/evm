@@ -19,7 +19,7 @@ typedef struct {
     size_t size;
 } Sv;
 
-Sv sv_from_cstr(char *src);
+Sv sv_from_cstr(const char *src);
 Sv sv_from_parts(const char *data, size_t size);
 Sv sv_clone(Sv sv);
 
@@ -56,7 +56,7 @@ static bool _isnewline(char c)
     return c == '\n';
 }
 
-Sv sv_from_cstr(char *src)
+Sv sv_from_cstr(const char *src)
 {
     return (Sv) {
         .data = src,
