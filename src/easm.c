@@ -161,7 +161,7 @@ char *shift_args(int *argc, char ***argv){
 
 
 /**allocates memory and returns the content of the file, returning the pointer to the memory*/
-char *slurp_file(const char *filepath){
+Sv slurp_file(const char *filepath){
     FILE *f = fopen(filepath, "r");
 
     if(f == NULL){
@@ -176,19 +176,19 @@ char *slurp_file(const char *filepath){
         fprintf(stderr, "Could not tell file size on %s: %s\n", filepath, strerror(errno));
         exit(1); 
     }
-
-    fseek(f, 0, SEEK_SET);
     
-    char *res = malloc(n);
-    assert(res != NULL);
+    fseek(f, 0, SEEK_SET);
+    char *data = malloc(n);
+    assert(data != NULL);
 
-    size_t m = fread(res, 1, n, f);
+    size_t m = fread(data, 1, n, f);
     while(m < (size_t) n){
-        m += fread(res + m, n, 1, f);
+        m += fread(data + m, n - m, 1, f);
     }
 
+    
     if(f) fclose(f);
-    return res;
+    return sv_from_parts(data, n);
 }
 
 int main(int argc, char **argv){
@@ -200,11 +200,8 @@ int main(int argc, char **argv){
     }
     
     const char *filepath = shift_args(&argc, &argv);
-    char *content = slurp_file(filepath);
+    Sv src = slurp_file(filepath);
     
-    //Resolve: Invalid read of size 1 from valgrind report
-    Sv src = sv_from_cstr(content);
-
     Easm_Tokens easm_tokens = {0};
     Evm_Insts evm_program = {0};
     easm_tokenize(src, &easm_tokens, filepath);
@@ -217,7 +214,7 @@ int main(int argc, char **argv){
    
     free(evm_program.items);
     free(easm_tokens.items);
-    free(content);
+    free((char *) src.data);
 
    return 0;
 }
