@@ -29,17 +29,27 @@ char *inst_to_str[EVM_INST_COUNT] = {
     [EVM_INST_HALT]    = "EVM_INST_HALT"
 };
 
-void stack_push(Stack *s, Data d){
+void dump_stack(const Stack *s)
+{
+    for(size_t i = 0; i < s->size; ++i){
+        printf ("index: %zu value: %zu   ", i, s->items[i]);
+    }
+    printf("\n");
+}
+
+void stack_push(Stack *s, Data d)
+{
     da_append(s, d);
 }
 
-Data stack_pop(Stack *s){
+Data stack_pop(Stack *s)
+{
     assert(s->size > 0 && "stack_pop:  STACK UNDERFLOW");
     return s->items[--s->size];
-    
 }
 
-Data stack_peek(Stack *s, size_t offset){
+Data stack_peek(Stack *s, size_t offset)
+{
     assert(s->size > 0 && "stack_peek: STACK UNDERFLOW");
     assert(s->size - offset - 1 <= s->size && "stack_peek: STACK ACCESS OUT OF BOUNDS");
     return s->items[s->size - offset - 1];
@@ -47,7 +57,8 @@ Data stack_peek(Stack *s, size_t offset){
 
 
 
-void evm_init(Evm *evm, Evm_Insts program){
+void evm_init(Evm *evm, Evm_Insts program)
+{
     memset(evm, 0, sizeof(*evm));
     evm->program = program;
     evm->memory_capacity = EVM_MEM_CAP;
@@ -56,50 +67,50 @@ void evm_init(Evm *evm, Evm_Insts program){
 }
 
 /**Won't free the program, because it's from external source*/
-void evm_free(Evm* evm){
+void evm_free(Evm* evm)
+{
     free(evm->memory);
     free(evm->stack.items);
 }
 
-Evm_Inst evm_next_inst(Evm *evm){
+Evm_Inst evm_next_inst(Evm *evm)
+{
     assert(evm->ip < evm->program.size && "PROGRAM MEMORY ACCESS OUT OF BOUNDS");
     return evm->program.items[evm->ip++];
 }
 
 
-void evm_push(Evm *evm, Data d){
+void evm_push(Evm *evm, Data d)
+{
     stack_push(&evm->stack, d);
 }
 
-Data evm_pop(Evm *evm){
+Data evm_pop(Evm *evm)
+{
     return stack_pop(&evm->stack);
 }
 
-Data evm_peek(Evm *evm, size_t offset){
+Data evm_peek(Evm *evm, size_t offset)
+{
     return stack_peek(&evm->stack, offset);
 }
 
-void evm_write(Evm *evm, Addr dst, Data a){
+void evm_write(Evm *evm, Addr dst, Data a)
+{
     assert(dst < evm->memory_capacity && "DATA MEMEORY ACCESS OUT OF BOUNDS");
     evm->memory[dst] = a;
 }
 
-Data evm_read(Evm *evm, Addr src){
+Data evm_read(Evm *evm, Addr src)
+{
     assert(src < evm->memory_capacity && "DATA MEMEORY ACCESS OUT OF BOUNDS");
     return evm->memory[src];
 }
 
-void dump_stack(Stack *s){
-    for(size_t i = 0; i < s->size; ++i){
-        printf ("index: %zu value: %zu   ", i, s->items[i]);
-    }
-    printf("\n");
-}
 
 void evm_run(Evm *evm){  
     while(true){
         Evm_Inst inst = evm_next_inst(evm);
-       
         switch(inst){
             case EVM_INST_PUSH: {
                 Data a = evm_next_inst(evm); 
@@ -196,6 +207,7 @@ void evm_run(Evm *evm){
             case EVM_INST_JP: {
                 evm->ip = evm_pop(evm);
             }
+            break;
             case EVM_INST_JC: {
                 Data cond = evm_pop(evm);
                 Addr new_ip = (Addr) evm_pop(evm);
@@ -215,6 +227,7 @@ void evm_run(Evm *evm){
                     evm->ip += offset;
                 }
             }
+            break;
             case EVM_INST_HALT: 
                 return;
 
@@ -222,8 +235,7 @@ void evm_run(Evm *evm){
             default:
                 UNREACHABLE;
         }
-        // printf("Ip: %zu Inst: %s Size: %zu\n", evm->ip, inst_to_str[inst], evm->stack.size);
-        //dump_stack(&evm->stack);
+        //printf("Ip: %zu Inst: %s Size: %zu\n", evm->ip, inst_to_str[inst], evm->stack.size);
     }
 }
 

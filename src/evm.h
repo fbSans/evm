@@ -33,7 +33,7 @@
 }while(0)
 
 #define TODO(msg) do {                                                                 \
-    fprintf(stderr, "%s:%d %s: %s\n",__FILE__, __LINE__,  __func__, msg);              \
+    fprintf(stderr, "todo: %s:%d %s: `%s`\n",__FILE__, __LINE__,  __func__, msg);              \
     exit(1);                                                                           \
 }while(0)
 
