@@ -14,7 +14,7 @@
 #define EASM_COMMENT ";"
 
 char *easm_instrunctions[] = {
-    "push", "dup", "add", "sub","multu", "printu64", "halt", "jp", "jpc", "jc", "jcr", "eq" ,"gt", "ge", "lt", "le",
+    "push", "dup", "swap", "add", "sub","multu", "printu64", "halt", "jp", "jpc", "jc", "jcr", "eq" ,"gt", "ge", "lt", "le", "write64", "read64", "puts"
 };
 
 int is_easm_opcode(Sv name) 
@@ -68,20 +68,21 @@ typedef struct {
 bool strtoi64(const char * ptr, int64_t *res)
 {
     char *end;
-    *res = strtol(ptr, &end, 10);
+    *res = strtol(ptr, &end, 0);
     return end != ptr;
 } 
 
 bool strtou64(const char * ptr, uint64_t *res)
 {
     char *end;
-    *res = strtoul(ptr, &end, 10);
+    *res = strtoul(ptr, &end, 0);
     return end != ptr;
 } 
 
 static void expect_comment_or_empty(Sv sv, const char *filepath, size_t row, size_t col){
+    sv_trim_left(&sv);
     if(!sv_starts_with(sv, sv_from_cstr(EASM_COMMENT)) && sv.size > 0){
-        fprintf(stderr, "%s:%zu:%zu Unexpected symbol\n", filepath, row, col);
+        fprintf(stderr, "%s:%zu:%zu Unexpected comment or empty line this location\n", filepath, row, col);
         exit(1);
     }
 }
@@ -168,6 +169,8 @@ void easm_parse(Easm_Tokens tokens, Evm_Insts *program)
                 } else if(sv_eq(token.name, sv_from_cstr("dup"))) {
                     da_append(program, EVM_INST_DUP);
                     da_append(program, token.as.data);
+                } else if(sv_eq(token.name, sv_from_cstr("swap"))) {
+                    da_append(program, EVM_INST_SWAP);
                 } else if(sv_eq(token.name, sv_from_cstr("add"))) {
                     da_append(program, EVM_INST_ADD);
                 } else if(sv_eq(token.name, sv_from_cstr("sub"))) {
@@ -203,7 +206,13 @@ void easm_parse(Easm_Tokens tokens, Evm_Insts *program)
                     UNIMPLEMENTED;
                 } else if ( sv_eq(token.name, sv_from_cstr("jrc"))){
                     UNIMPLEMENTED;
-                } else if(sv_eq(token.name, sv_from_cstr("halt"))) {
+                } else if(sv_eq(token.name, sv_from_cstr("puts"))) {
+                    da_append(program, EVM_INST_PUTS);
+                } else if(sv_eq(token.name, sv_from_cstr("write64"))) {
+                    da_append(program, EVM_INST_WRITE64);
+                } else if(sv_eq(token.name, sv_from_cstr("read64"))) {
+                    da_append(program, EVM_INST_READ64);
+                }else if(sv_eq(token.name, sv_from_cstr("halt"))) {
                     da_append(program, EVM_INST_HALT);
                 } else {
                     char message[1024] = {0};

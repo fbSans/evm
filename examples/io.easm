@@ -1,0 +1,29 @@
+push 0x0a      ; data           '\n'
+push 0              ; ptr = 0
+write64 
+
+push 0              ; '\0'
+push 1              ; ptr = 1
+write64 
+
+push 4
+printu64
+
+push 1             ; size
+push 0             ; ptr
+puts
+
+push 1             ; size
+push 0             ; ptr
+puts
+
+push 0             ;ptr
+read64
+
+printu64
+
+push 1             ; size
+push 0             ; ptr
+puts
+
+halt

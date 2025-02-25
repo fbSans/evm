@@ -111,7 +111,6 @@ Data evm_read(Evm *evm, Addr src)
 void evm_run(Evm *evm){  
     while(true){
         Evm_Inst inst = evm_next_inst(evm);
-        printf("i:%d\n", inst);
         switch(inst){
             case EVM_INST_PUSH: {
                 Data a = evm_next_inst(evm); 
