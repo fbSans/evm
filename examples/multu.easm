@@ -1,0 +1,5 @@
+push 5
+push 4
+multu
+printu64
+halt

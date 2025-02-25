@@ -1,6 +1,5 @@
 push 1
-dup 0
-add
-dup 0
+push 0
+ge
 printu64
 halt

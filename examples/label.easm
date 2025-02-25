@@ -1,7 +1,0 @@
-    jp end
-    push 1
-end:
-    push 5
-    printu64
-    halt
-

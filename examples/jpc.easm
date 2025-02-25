@@ -1,0 +1,12 @@
+push 12
+push 3
+jpc op
+    push 7
+    printu64
+    halt
+
+op:
+    push 1
+    sub
+    printu64
+    halt

@@ -11,8 +11,8 @@ char *inst_to_str[EVM_INST_COUNT] = {
     [EVM_INST_PUSH]    = "EVM_INST_PUSH",
     [EVM_INST_DUP]     = "EVM_INST_DUP",
     [EVM_INST_SWAP]    = "EVM_INST_SWAP",
-    [EVM_INST_ADDU]    = "EVM_INST_ADDU",
-    [EVM_INST_SUBU]    = "EVM_INST_SUBU",
+    [EVM_INST_ADD]    = "EVM_INST_ADD",
+    [EVM_INST_SUB]    = "EVM_INST_SUB",
     [EVM_INST_MULTU]   = "EVM_INST_MULTU",
     [EVM_INST_GT]      = "EVM_INST_GT",
     [EVM_INST_LT]      = "EVM_INST_LT",
@@ -23,9 +23,9 @@ char *inst_to_str[EVM_INST_COUNT] = {
     [EVM_INST_WRITE64] = "EVM_INST_WRITE64",
     [EVM_INST_PRINTU]  = "EVM_INST_PRINTU",
     [EVM_INST_JP]      = "EVM_INST_JP",
-    [EVM_INST_JC]      = "EVM_INST_JC",
+    [EVM_INST_JPC]      = "EVM_INST_JPC",
     [EVM_INST_JR]      = "EVM_INST_JR",
-    [EVM_INST_JCR]     = "EVM_INST_JCR",
+    [EVM_INST_JRC]     = "EVM_INST_JRC",
     [EVM_INST_HALT]    = "EVM_INST_HALT"
 };
 
@@ -111,6 +111,7 @@ Data evm_read(Evm *evm, Addr src)
 void evm_run(Evm *evm){  
     while(true){
         Evm_Inst inst = evm_next_inst(evm);
+        printf("i:%d\n", inst);
         switch(inst){
             case EVM_INST_PUSH: {
                 Data a = evm_next_inst(evm); 
@@ -130,14 +131,14 @@ void evm_run(Evm *evm){
                 evm_push(evm, b);
             }
             break;
-            case EVM_INST_ADDU:{
+            case EVM_INST_ADD:{
                 Data a = evm_pop(evm);
                 Data b = evm_pop(evm);  
                 Data s = b + a;
                 evm_push(evm, s);
             }
             break;
-            case EVM_INST_SUBU:{
+            case EVM_INST_SUB:{
                 Data a = evm_pop(evm);
                 Data b = evm_pop(evm);  
                 Data s = b - a;
@@ -208,7 +209,7 @@ void evm_run(Evm *evm){
                 evm->ip = evm_pop(evm);
             }
             break;
-            case EVM_INST_JC: {
+            case EVM_INST_JPC: {
                 Data cond = evm_pop(evm);
                 Addr new_ip = (Addr) evm_pop(evm);
                 if(cond){
@@ -220,7 +221,7 @@ void evm_run(Evm *evm){
                 evm->ip += evm_pop(evm);
             }
             break;
-            case EVM_INST_JCR: {
+            case EVM_INST_JRC: {
                 Data cond = evm_pop(evm);
                 long offset = evm_pop(evm);
                 if(cond){
@@ -290,29 +291,29 @@ void testFib(void)
     da_append(&program, 1);
     
     //add
-    da_append(&program, EVM_INST_ADDU);
+    da_append(&program, EVM_INST_ADD);
     
     //dup 0
     da_append(&program, EVM_INST_DUP);
     da_append(&program, 0);
 
 
-    //push 1000
+    //push INT32_MAX
     da_append(&program, EVM_INST_PUSH);
     da_append(&program, INT32_MAX);
 
     //gt
     da_append(&program, EVM_INST_GT);
 
-    //push 0
+    //push 9
     da_append(&program, EVM_INST_PUSH);
     da_append(&program, 9);
      
     //swap
     da_append(&program, EVM_INST_SWAP);
 
-    //jc 
-    da_append(&program, EVM_INST_JC);
+    //jpc 
+    da_append(&program, EVM_INST_JPC);
 
     //halt
     da_append(&program, EVM_INST_HALT); 

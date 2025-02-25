@@ -44,8 +44,8 @@ typedef enum  {
     EVM_INST_PUSH = 0,
     EVM_INST_DUP,
     EVM_INST_SWAP,
-    EVM_INST_ADDU,
-    EVM_INST_SUBU,
+    EVM_INST_ADD,
+    EVM_INST_SUB,
     EVM_INST_MULTU,
     EVM_INST_GT,
     EVM_INST_LT,
@@ -57,9 +57,9 @@ typedef enum  {
     EVM_INST_PRINTU,
     EVM_INST_PUTS,
     EVM_INST_JP,
-    EVM_INST_JC,
+    EVM_INST_JPC,
     EVM_INST_JR,
-    EVM_INST_JCR,
+    EVM_INST_JRC,
     EVM_INST_HALT,
     EVM_INST_COUNT
 } Evm_Inst;

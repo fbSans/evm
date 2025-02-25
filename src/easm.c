@@ -14,7 +14,7 @@
 #define EASM_COMMENT ";"
 
 char *easm_instrunctions[] = {
-    "push", "dup", "addu", "printu64", "halt", "jp",
+    "push", "dup", "add", "sub","multu", "printu64", "halt", "jp", "jpc", "jc", "jcr", "eq" ,"gt", "ge", "lt", "le",
 };
 
 int is_easm_opcode(Sv name) 
@@ -113,7 +113,10 @@ void easm_tokenize(Sv src, Easm_Tokens *tokens, const char *filepath)
             token.type = EASM_TYPE_INST;
             token.name = opcode;
             //Instructions with opernads
-            if(sv_eq(opcode, sv_from_cstr("push")) || sv_eq(opcode, sv_from_cstr("dup"))){
+            if(sv_eq(opcode, sv_from_cstr("push")) || sv_eq(opcode, sv_from_cstr("dup")) ||
+            sv_eq(opcode, sv_from_cstr("jr")) ||
+            sv_eq(opcode, sv_from_cstr("jrc"))){
+
                 uint64_t num_operand;
                 Sv operand = sv_chop_left(&line);
                 expect_comment_or_empty(line, filepath, row, line.data - line_start);
@@ -121,7 +124,9 @@ void easm_tokenize(Sv src, Easm_Tokens *tokens, const char *filepath)
                     log_error_and_exit("tokenizer: Expected a numeric operand", filepath, row, operand.data - line_start + 1);
                 } 
                 token.as.data = num_operand; 
-            } else if (sv_eq(opcode, sv_from_cstr("jp"))){
+            } else if ( sv_eq(opcode, sv_from_cstr("jp"))     ||
+                        sv_eq(opcode, sv_from_cstr("jpc"))) {
+
                 token.as.label = sv_chop_left(&line);
                 expect_comment_or_empty(line, filepath, row, line.data - line_start);
             } 
@@ -163,17 +168,41 @@ void easm_parse(Easm_Tokens tokens, Evm_Insts *program)
                 } else if(sv_eq(token.name, sv_from_cstr("dup"))) {
                     da_append(program, EVM_INST_DUP);
                     da_append(program, token.as.data);
-                } else if(sv_eq(token.name, sv_from_cstr("addu"))) {
-                    da_append(program, EVM_INST_ADDU);
-                }  else if(sv_eq(token.name, sv_from_cstr("printu64"))) {
+                } else if(sv_eq(token.name, sv_from_cstr("add"))) {
+                    da_append(program, EVM_INST_ADD);
+                } else if(sv_eq(token.name, sv_from_cstr("sub"))) {
+                    da_append(program, EVM_INST_SUB);
+                } else if(sv_eq(token.name, sv_from_cstr("multu"))) {
+                    da_append(program, EVM_INST_MULTU);
+                } else if(sv_eq(token.name, sv_from_cstr("eq"))) {
+                    da_append(program, EVM_INST_EQ);
+                }  else if(sv_eq(token.name, sv_from_cstr("gt"))) {
+                    da_append(program, EVM_INST_GT);
+                }  else if(sv_eq(token.name, sv_from_cstr("ge"))) {
+                    da_append(program, EVM_INST_GE);
+                } else if(sv_eq(token.name, sv_from_cstr("lt"))) {
+                    da_append(program, EVM_INST_LT);
+                }  else if(sv_eq(token.name, sv_from_cstr("le"))) {
+                    da_append(program, EVM_INST_LE);
+                } else if(sv_eq(token.name, sv_from_cstr("printu64"))) {
                     da_append(program, EVM_INST_PRINTU);
-                } else if (sv_eq(token.name, sv_from_cstr("jp"))){
+                } else if ( sv_eq(token.name, sv_from_cstr("jp"))){
                     da_append(&names, token);
                     da_append(&unresolved, program->size + 1);
-
                     da_append(program, EVM_INST_PUSH);
                     da_append(program, UINT32_MAX); //placeholder (check it later)
                     da_append(program, EVM_INST_JP);
+                }  else if ( sv_eq(token.name, sv_from_cstr("jpc"))){
+                    da_append(&names, token);
+                    da_append(&unresolved, program->size + 1);
+                    da_append(program, EVM_INST_PUSH);
+                    da_append(program, UINT32_MAX); //placeholder (check it later)
+                    da_append(program, EVM_INST_SWAP);
+                    da_append(program, EVM_INST_JPC);
+                } else if ( sv_eq(token.name, sv_from_cstr("jr"))){
+                    UNIMPLEMENTED;
+                } else if ( sv_eq(token.name, sv_from_cstr("jrc"))){
+                    UNIMPLEMENTED;
                 } else if(sv_eq(token.name, sv_from_cstr("halt"))) {
                     da_append(program, EVM_INST_HALT);
                 } else {

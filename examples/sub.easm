@@ -1,0 +1,5 @@
+push 20
+push 10
+sub
+printu64
+halt

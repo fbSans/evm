@@ -1,0 +1,9 @@
+    push 1
+    jp end
+    halt
+end:
+    dup 0
+    printu64
+    printu64
+    halt
+
