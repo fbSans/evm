@@ -1,0 +1,27 @@
+    push 0x0a
+    push 0
+    write64         ;write 0 '\n'
+
+    push 1          ;initial value
+    push 1          ;acc
+
+loop:
+    dup 1
+    multu
+    dup 0 
+    printu64
+
+    push 1  ;size
+    push 0  ;ptr
+    puts    ;puts ptr size
+
+    swap
+    push 1
+    add
+    swap
+
+    push 0xffffffffffffff ;loop if acc <= 0xffffffff
+    dup 1
+    le
+    jpc loop
+halt

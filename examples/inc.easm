@@ -1,0 +1,24 @@
+    push 0x0a
+    push 0
+    write64         ;write 0 '\n'
+
+    push 0xffff          ;initial value
+ loop:
+    dup 0
+    printu64
+
+    push 2
+    multu
+
+    push 1
+    push 0
+    puts
+
+    push 0xffffffffffffffff
+    dup 1
+    le
+    jpc loop
+    
+    halt
+
+

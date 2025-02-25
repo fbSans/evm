@@ -68,14 +68,14 @@ typedef struct {
 bool strtoi64(const char * ptr, int64_t *res)
 {
     char *end;
-    *res = strtol(ptr, &end, 0);
+    *res = strtoull(ptr, &end, 0);
     return end != ptr;
 } 
 
 bool strtou64(const char * ptr, uint64_t *res)
 {
     char *end;
-    *res = strtoul(ptr, &end, 0);
+    *res = strtoull(ptr, &end, 0);
     return end != ptr;
 } 
 
@@ -239,7 +239,7 @@ void easm_parse(Easm_Tokens tokens, Evm_Insts *program)
     //Second pass
     for(size_t i = 0; i < unresolved.size; ++i){
         size_t inst_idx = unresolved.items[i];
-        Evm_Inst *replacee = &program->items[inst_idx];
+        Data *replacee = &program->items[inst_idx];
         Easm_Token token = names.items[i]; // for name and localtion
 
         assert(*replacee == UINT32_MAX); 

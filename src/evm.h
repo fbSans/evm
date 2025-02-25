@@ -40,7 +40,7 @@
 #define ARRAY_LEN(a) sizeof((a))/sizeof((a)[0])
 
 
-typedef enum  {
+typedef enum {
     EVM_INST_PUSH = 0,
     EVM_INST_DUP,
     EVM_INST_SWAP,
@@ -62,16 +62,17 @@ typedef enum  {
     EVM_INST_JRC,
     EVM_INST_HALT,
     EVM_INST_COUNT
-} Evm_Inst;
+} Evm_Opcode;
 
 static_assert(EVM_INST_COUNT == 20, "Change in EVM_INST_COUNT");
 
 
 typedef uint64_t Addr;
 typedef uint64_t Data;
+typedef uint64_t Evm_Inst;
 
 typedef struct {
-    Evm_Inst *items;
+    Evm_Inst *items; //in order to accept 64bit immedia values
     size_t size;
     size_t capacity;
 } Evm_Insts;

@@ -1,0 +1,12 @@
+push 0x0a
+push 0
+write64         ;write 0 '\n'
+
+push -1
+printu64
+
+push 1
+push 0
+puts
+
+halt
