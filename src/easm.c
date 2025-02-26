@@ -260,6 +260,7 @@ void easm_parse(Easm_Tokens tokens, Evm_Insts *program)
 
     free(labels.items);
     free(unresolved.items);
+    free(names.items);
 }
 
 // Helpers
