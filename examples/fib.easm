@@ -1,6 +1,6 @@
     push 0x0a
     push 0
-    write64         ;write 0 '\n'
+    write64        ;write 0 '\n'
 
     push 0
     push 1
@@ -17,7 +17,7 @@ loop:
     add         ;calculate the next
 
     dup 0
-    push 0xffffffffffffff
+    push 0xffffffffffffff ;push uint64_max
 
     gt
 
