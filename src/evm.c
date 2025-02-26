@@ -327,7 +327,6 @@ void testFib(void)
 int main(void) 
 {
     testFib();
-    printf("%zu\n", sizeof(Evm_Opcode));
     return 0;
 }
 #endif //EVM_DEBUG
