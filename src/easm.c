@@ -14,7 +14,7 @@
 #define EASM_COMMENT ";"
 
 char *easm_instrunctions[] = {
-    "push", "dup", "swap", "add", "sub","multu", "printu64", "halt", "jp", "jpc", "jc", "jcr", "eq" ,"gt", "ge", "lt", "le", "write64", "read64", "puts"
+    "push", "dup", "swap", "add", "sub","multu", "printu64", "halt", "jp", "jpc", "jc", "jcr", "eq" ,"gt", "ge", "lt", "le", "write8", "write64", "read8","read64", "puts"
 };
 
 int is_easm_opcode(Sv name) 
@@ -209,15 +209,19 @@ void easm_generate(Easm_Tokens tokens, Evm_Insts *program)
                     UNIMPLEMENTED;
                 } else if(sv_eq(token.name, sv_from_cstr("puts"))) {
                     da_append(program, EVM_INST_PUTS);
-                } else if(sv_eq(token.name, sv_from_cstr("write64"))) {
+                } else if(sv_eq(token.name, sv_from_cstr("write8"))) {
+                    da_append(program, EVM_INST_WRITE8);
+                }else if(sv_eq(token.name, sv_from_cstr("write64"))) {
                     da_append(program, EVM_INST_WRITE64);
+                }  else if(sv_eq(token.name, sv_from_cstr("read8"))) {
+                    da_append(program, EVM_INST_READ8);
                 } else if(sv_eq(token.name, sv_from_cstr("read64"))) {
                     da_append(program, EVM_INST_READ64);
-                }else if(sv_eq(token.name, sv_from_cstr("halt"))) {
+                } else if(sv_eq(token.name, sv_from_cstr("halt"))) {
                     da_append(program, EVM_INST_HALT);
                 } else {
                     char message[1024] = {0};
-                    char *start = "parser: Unknown opcode: ";
+                    char *start = "generator: Unknown opcode: ";
                     size_t start_size = strlen(start);
                     memcpy(message, start, start_size);
                     memcpy(message + start_size, token.name.data, token.name.size);

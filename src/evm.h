@@ -52,7 +52,9 @@ typedef enum {
     EVM_INST_EQ,
     EVM_INST_GE,
     EVM_INST_LE,
+    EVM_INST_READ8,
     EVM_INST_READ64,
+    EVM_INST_WRITE8,
     EVM_INST_WRITE64,
     EVM_INST_PRINTU,
     EVM_INST_PUTS,
@@ -64,7 +66,7 @@ typedef enum {
     EVM_INST_COUNT
 } Evm_Opcode;
 
-static_assert(EVM_INST_COUNT == 20, "Change in EVM_INST_COUNT");
+static_assert(EVM_INST_COUNT == 22, "Change in EVM_INST_COUNT");
 
 
 typedef uint64_t Addr;

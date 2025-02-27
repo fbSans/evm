@@ -1,6 +1,6 @@
     push 0x0a
     push 0
-    write64         ;write 0 '\n'
+    write8         ;write 0 '\n'
 
     push 1          ;initial value
     push 1          ;acc

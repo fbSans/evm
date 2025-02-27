@@ -1,6 +1,6 @@
     push 0x0a
     push 0
-    write64         ;write 0 '\n'
+    write8         ;write 0 '\n'
 
     push 4
     push 3
@@ -22,7 +22,7 @@ end:
     push 0
     puts
 
-    
+
     halt
 
 

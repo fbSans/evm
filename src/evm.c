@@ -95,16 +95,29 @@ Data evm_peek(Evm *evm, size_t offset)
     return stack_peek(&evm->stack, offset);
 }
 
-void evm_write(Evm *evm, Addr dst, Data a)
+void evm_write8(Evm *evm, Addr dst, Data a)
+{
+    assert(dst < evm->memory_capacity && "DATA MEMEORY ACCESS OUT OF BOUNDS");
+    uint8_t *dst8 = (uint8_t *)evm->memory + dst;
+    *dst8 = a;
+}
+
+void evm_write64(Evm *evm, Addr dst, Data a)
 {
     assert(dst < evm->memory_capacity && "DATA MEMEORY ACCESS OUT OF BOUNDS");
     evm->memory[dst] = a;
 }
 
-Data evm_read(Evm *evm, Addr src)
+Data evm_read64(Evm *evm, Addr src)
 {
     assert(src < evm->memory_capacity && "DATA MEMEORY ACCESS OUT OF BOUNDS");
     return evm->memory[src];
+}
+
+Data evm_read8(Evm *evm, Addr src)
+{
+    assert(src < evm->memory_capacity && "DATA MEMEORY ACCESS OUT OF BOUNDS");
+    return *((uint8_t *)evm->memory + src);
 }
 
 
@@ -181,16 +194,28 @@ void evm_run(Evm *evm){
                 evm_push(evm, a <= b);
             }
             break;
+            case EVM_INST_READ8: {
+                Addr src = (Addr) evm_pop(evm);
+                Data a = evm_read8(evm, src);
+                evm_push(evm, a);
+            } 
+            break;
             case EVM_INST_READ64: {
                 Addr src = (Addr) evm_pop(evm);
-                Data a = evm_read(evm, src);
+                Data a = evm_read64(evm, src);
                 evm_push(evm, a);
+            } 
+            break;
+            case EVM_INST_WRITE8: {
+                Addr dst = (Addr) evm_pop(evm);
+                Data a = evm_pop(evm);
+                evm_write8(evm, dst, a);
             } 
             break;
             case EVM_INST_WRITE64:{
                 Addr dst = (Addr) evm_pop(evm);
                 Data a = evm_pop(evm);
-                evm_write(evm, dst, a);
+                evm_write64(evm, dst, a);
             } 
             break;
             case EVM_INST_PRINTU: {

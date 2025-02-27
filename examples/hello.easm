@@ -1,0 +1,66 @@
+; A more convinient way of writing bytes to the momory is needed
+
+
+push 0x48
+push 0
+write8
+
+
+push 0x65
+push 1
+write8
+
+
+push 0x6c
+push 2
+write8
+
+push 0x6c
+push 3
+write8
+
+
+push 0x6f
+push 4
+write8
+
+push 0x20
+push 5
+write8
+
+push 0x77
+push 6
+write8
+
+
+push 0x6f
+push 7
+write8
+
+push 0x72
+push 8
+write8
+
+push 0x6c
+push 9
+write8
+
+push 0x64
+push 10
+write8
+
+push 0x21
+push 11
+write8
+
+push 0x0a
+push 12
+write8
+
+push 13
+push 0
+puts
+
+
+halt
+
