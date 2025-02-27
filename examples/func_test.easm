@@ -1,0 +1,31 @@
+jp main
+
+main:
+    push 3
+    push 4
+    call sum
+    printu64
+    call print_newline
+
+    push 5
+    push 7
+    multu
+    printu64
+    call print_newline
+
+    halt
+
+
+sum: 
+    add
+    ret
+
+print_newline:
+    push 0xa
+    push 0x0
+    write8
+
+    push 1
+    push 0
+    puts
+    ret

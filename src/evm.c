@@ -86,7 +86,7 @@ void evm_call(Evm *evm, Addr func_addr){
 }
 
 void evm_ret(Evm *evm){
-    evm->ip = (&evm->call_stack); 
+    evm->ip = (Addr) stack_pop(&evm->call_stack); 
 }
 
 void evm_push(Evm *evm, Data d)
@@ -237,6 +237,15 @@ void evm_run(Evm *evm){
                 Data size = evm_pop(evm);
                 fwrite(&evm->memory[ptr], size, 1, stdout);
                 fflush(stdout);
+            }
+            break;
+            case EVM_INST_CALL: {
+               Addr func_addr = (Addr) evm_pop(evm); 
+               evm_call(evm, func_addr);
+            }
+            break;
+            case EVM_INST_RET:{
+               evm_ret(evm);
             }
             break;
             case EVM_INST_JP: {

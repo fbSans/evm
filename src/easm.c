@@ -14,7 +14,15 @@
 #define EASM_COMMENT ";"
 
 char *easm_instrunctions[] = {
-    "push", "dup", "swap", "add", "sub","multu", "printu64", "halt", "jp", "jpc", "jc", "jcr", "eq" ,"gt", "ge", "lt", "le", "write8", "write64", "read8","read64", "puts"
+    "push", "dup", "swap", 
+    "add", "sub","multu", 
+    "printu64", "halt", 
+    "jp", "jpc", "jc", 
+    "jcr", "eq" ,"gt", 
+    "ge", "lt", "le", 
+    "write8", "write64", 
+    "read8","read64", "puts",
+    "call", "ret",
 };
 
 int is_easm_opcode(Sv name) 
@@ -125,8 +133,9 @@ void easm_tokenize(Sv src, Easm_Tokens *tokens, const char *filepath)
                     log_error_and_exit("tokenizer: Expected a numeric operand", filepath, row, operand.data - line_start + 1);
                 } 
                 token.get.data = num_operand; 
-            } else if ( sv_eq(opcode, sv_from_cstr("jp"))     ||
-                        sv_eq(opcode, sv_from_cstr("jpc"))) {
+            } else if ( sv_eq(opcode, sv_from_cstr("jp"))   ||
+                        sv_eq(opcode, sv_from_cstr("jpc"))  ||
+                        sv_eq(opcode, sv_from_cstr("call"))) {
                             
                 token.get.label = sv_chop_left(&line);
                 expect_comment_or_empty(line, filepath, row, line.data - line_start);
@@ -190,13 +199,21 @@ void easm_generate(Easm_Tokens tokens, Evm_Insts *program)
                     da_append(program, EVM_INST_LE);
                 } else if(sv_eq(token.name, sv_from_cstr("printu64"))) {
                     da_append(program, EVM_INST_PRINTU);
+                } else if(sv_eq(token.name, sv_from_cstr("ret"))) {
+                    da_append(program, EVM_INST_RET);
+                } else if ( sv_eq(token.name, sv_from_cstr("call"))){
+                    da_append(&names, token);
+                    da_append(&unresolved, program->size + 1);
+                    da_append(program, EVM_INST_PUSH);
+                    da_append(program, UINT32_MAX); //placeholder (check it later)
+                    da_append(program, EVM_INST_CALL);
                 } else if ( sv_eq(token.name, sv_from_cstr("jp"))){
                     da_append(&names, token);
                     da_append(&unresolved, program->size + 1);
                     da_append(program, EVM_INST_PUSH);
                     da_append(program, UINT32_MAX); //placeholder (check it later)
                     da_append(program, EVM_INST_JP);
-                }  else if ( sv_eq(token.name, sv_from_cstr("jpc"))){
+                } else if ( sv_eq(token.name, sv_from_cstr("jpc"))){
                     da_append(&names, token);
                     da_append(&unresolved, program->size + 1);
                     da_append(program, EVM_INST_PUSH);
