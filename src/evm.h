@@ -92,6 +92,7 @@ typedef struct {
     Stack stack;
     Data *memory;
     size_t memory_capacity;
+    Stack call_stack;
 } Evm;
 
 void evm_init(Evm *evm, Evm_Insts program);

@@ -71,6 +71,7 @@ void evm_free(Evm* evm)
 {
     free(evm->memory);
     free(evm->stack.items);
+    free(evm->call_stack.items);
 }
 
 Evm_Inst evm_next_inst(Evm *evm)
@@ -79,6 +80,14 @@ Evm_Inst evm_next_inst(Evm *evm)
     return evm->program.items[evm->ip++];
 }
 
+void evm_call(Evm *evm, Addr func_addr){
+    stack_push(&evm->call_stack, evm->ip);
+    evm->ip = func_addr;
+}
+
+void evm_ret(Evm *evm){
+    evm->ip = (&evm->call_stack); 
+}
 
 void evm_push(Evm *evm, Data d)
 {
