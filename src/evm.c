@@ -202,6 +202,7 @@ void evm_run(Evm *evm){
                 Addr ptr = (Addr) evm_pop(evm);
                 Data size = evm_pop(evm);
                 fwrite(&evm->memory[ptr], size, 1, stdout);
+                fflush(stdout);
             }
             break;
             case EVM_INST_JP: {
@@ -239,7 +240,10 @@ void evm_run(Evm *evm){
     }
 }
 
-void testFib(void) 
+
+#ifdef EVM_DEBUG
+
+static void testFib(void) 
 {
     Evm evm = {0};
     Evm_Insts program = {0};
@@ -323,7 +327,6 @@ void testFib(void)
     free(program.items);
 }
 
-#ifdef EVM_DEBUG
 int main(void) 
 {
     testFib();

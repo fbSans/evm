@@ -40,7 +40,7 @@ typedef struct {
         int64_t offset;
         uint64_t address;
         Sv label;
-    } as;
+    } get;
     const char *filepath;
     size_t row;
     size_t col;
@@ -124,15 +124,15 @@ void easm_tokenize(Sv src, Easm_Tokens *tokens, const char *filepath)
                 if(!strtou64(operand.data, &num_operand)){
                     log_error_and_exit("tokenizer: Expected a numeric operand", filepath, row, operand.data - line_start + 1);
                 } 
-                token.as.data = num_operand; 
+                token.get.data = num_operand; 
             } else if ( sv_eq(opcode, sv_from_cstr("jp"))     ||
                         sv_eq(opcode, sv_from_cstr("jpc"))) {
-
-                token.as.label = sv_chop_left(&line);
+                            
+                token.get.label = sv_chop_left(&line);
                 expect_comment_or_empty(line, filepath, row, line.data - line_start);
             } 
         } else if (sv_ends_with(opcode, sv_from_cstr(":"))){
-            if(opcode.size < 2) log_error_and_exit("tokeniner: Unexpected symbol", token.filepath, token.row, token.col);
+            if(opcode.size < 2) log_error_and_exit("tokeniner: Unexpected empty label", token.filepath, token.row, token.col);
             opcode.size--;
             token.name = opcode;
             token.type = EASM_TYPE_LABEL;
@@ -152,7 +152,7 @@ void easm_tokenize(Sv src, Easm_Tokens *tokens, const char *filepath)
 }
 
 //Tokens here must be all corresponding to instructions
-void easm_parse(Easm_Tokens tokens, Evm_Insts *program)
+void easm_generate(Easm_Tokens tokens, Evm_Insts *program)
 {
     Easm_Tokens labels = {0};
     Indices unresolved = {0};
@@ -165,12 +165,13 @@ void easm_parse(Easm_Tokens tokens, Evm_Insts *program)
             case EASM_TYPE_INST:{
                 if(sv_eq(token.name, sv_from_cstr("push"))){
                     da_append(program, EVM_INST_PUSH);
-                    da_append(program, token.as.data);
+                    da_append(program, token.get.data);
                 } else if(sv_eq(token.name, sv_from_cstr("dup"))) {
                     da_append(program, EVM_INST_DUP);
-                    da_append(program, token.as.data);
+                    da_append(program, token.get.data);
                 } else if(sv_eq(token.name, sv_from_cstr("swap"))) {
                     da_append(program, EVM_INST_SWAP);
+                    
                 } else if(sv_eq(token.name, sv_from_cstr("add"))) {
                     da_append(program, EVM_INST_ADD);
                 } else if(sv_eq(token.name, sv_from_cstr("sub"))) {
@@ -225,9 +226,9 @@ void easm_parse(Easm_Tokens tokens, Evm_Insts *program)
             } 
             break;
             case EASM_TYPE_LABEL: {
-                token.as.address = program->size;
+                token.get.address = program->size;
                 da_append(&labels, token);
-                //printf("%zu\n", token.as.address);
+                //printf("%zu\n", token.get.address);
             }
             break;
             default:{
@@ -241,21 +242,22 @@ void easm_parse(Easm_Tokens tokens, Evm_Insts *program)
         size_t inst_idx = unresolved.items[i];
         Data *replacee = &program->items[inst_idx];
         Easm_Token token = names.items[i]; // for name and localtion
-
+        
         assert(*replacee == UINT32_MAX); 
         bool found = false;
         for(size_t j = 0; j < labels.size; ++j){
-            found = true;
             Easm_Token label = labels.items[j];
             assert(label.type == EASM_TYPE_LABEL); 
-            if(sv_eq(token.as.label, label.name)){
-                *replacee = label.as.address;
+            if(sv_eq(token.get.label, label.name)){
+                found = true;
+                *replacee = label.get.address;
+                break;
             }
         }
         if(!found) {
-            char message[] = "parser: Undefined label";
+            char message[] = "generator: Undefined label";
             log_error_and_exit(message, token.filepath, token.row, token.col);
-        }
+        } 
     }
 
     free(labels.items);
@@ -321,7 +323,7 @@ int main(int argc, char **argv)
     Easm_Tokens easm_tokens = {0};
     Evm_Insts evm_program = {0};
     easm_tokenize(src, &easm_tokens, filepath);
-    easm_parse(easm_tokens, &evm_program);
+    easm_generate(easm_tokens, &evm_program);
 
     Evm evm = {0};
     evm_init(&evm, evm_program);
