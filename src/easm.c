@@ -260,18 +260,17 @@ void easm_generate(Easm_Tokens tokens, Evm_Insts *program)
 
     //Second pass
     for(size_t i = 0; i < unresolved.size; ++i){
-        size_t inst_idx = unresolved.items[i];
-        Data *replacee = &program->items[inst_idx];
+        size_t replacement_idx = unresolved.items[i];
         Easm_Token token = names.items[i]; // for name and localtion
         
-        assert(*replacee == UINT32_MAX); 
+        assert(program->items[replacement_idx] == UINT32_MAX); 
         bool found = false;
         for(size_t j = 0; j < labels.size; ++j){
             Easm_Token label = labels.items[j];
             assert(label.type == EASM_TYPE_LABEL); 
             if(sv_eq(token.get.label, label.name)){
                 found = true;
-                *replacee = label.get.address;
+                program->items[replacement_idx] = label.get.address;
                 break;
             }
         }
