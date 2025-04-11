@@ -1,0 +1,6 @@
+    jp main
+
+main:
+    halt
+
+

@@ -1,4 +1,4 @@
-jp main
+c    jp main
 
 main:
     push 3

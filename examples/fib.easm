@@ -4,7 +4,7 @@
 
     push 0
     push 1
-loop:
+loop: 
     dup 1
     printu64
 
