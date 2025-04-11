@@ -88,6 +88,7 @@ typedef struct {
 } Stack;
 
 typedef struct {
+    Addr heap_base; /*addresses from the user will be offsets from this address in memeory*/
     Addr ip;
     Evm_Insts program;
     size_t program_size;

@@ -35,8 +35,9 @@ int is_easm_opcode(Sv name)
 }
 
 typedef enum {
-    EASM_TYPE_INST,
+    EASM_TYPE_INST, 
     EASM_TYPE_LABEL,
+    EASM_TYPE_BYTES, //this are too be placed in the data memory
 } Easm_TokenType;
 
 typedef struct {
@@ -340,11 +341,13 @@ int main(int argc, char **argv)
     const char *filepath = shift_args(&argc, &argv);
     Sv src = slurp_file(filepath);
     
+    Addr heap_base = 0;
     Easm_Tokens easm_tokens = {0};
     Evm_Insts evm_program = {0};
     easm_tokenize(src, &easm_tokens, filepath);
-    easm_generate(easm_tokens, &evm_program);
+    easm_generate(easm_tokens, &evm_program);// &heap_base);
 
+    //Heap_base by default is 0
     Evm evm = {0};
     evm_init(&evm, evm_program);
     evm_run(&evm);
