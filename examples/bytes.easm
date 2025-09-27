@@ -18,7 +18,7 @@ main:
 
 
 
-// Basic explanation of what was added    
+; Basic explanation of what was added    
 
 ; this strings are stored in the data memory
 ; the layout is the following:
