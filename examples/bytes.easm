@@ -1,3 +1,5 @@
+; TODO: add rotations in order to meke easy to deal with swapping in arbitrary positions
+
 jp main
 
 main:
@@ -11,7 +13,12 @@ main:
     halt
 
 .hello:
-    db "hello \"today\" world!\n";
+    db "hello world!\n";
+
+
+
+
+// Basic explanation of what was added    
 
 ; this strings are stored in the data memory
 ; the layout is the following:
