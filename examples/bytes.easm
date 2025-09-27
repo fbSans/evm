@@ -1,8 +1,21 @@
 jp main
 
 main:
-    
+    pushl .hello
+    dup 0
+    read64
+    swap
+    push 1
+    add 
+    puts
     halt
 
-hello:
-    db "hello world";
+.hello:
+    db "hello \"today\" world!\n";
+
+; this strings are stored in the data memory
+; the layout is the following:
+;                 [[lenght - 8 bytes][data - 1byte elemens]]
+
+; labels starting with `.` refer to the `data memory` as oposed of the others that refer to the  `instruction instruction`
+; `db` is a directive to specify the bytes

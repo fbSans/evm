@@ -19,7 +19,8 @@ char *easm_instrunctions[] = {
     "ge", "lt", "le", 
     "write8", "write64", 
     "read8","read64", "puts",
-    "call", "ret",
+    "call", "ret", "pushl",
+    "push_heapb"
 };
 
 int is_easm_opcode(StringView name) 
@@ -34,6 +35,7 @@ int is_easm_opcode(StringView name)
 typedef enum {
     EASM_TYPE_INST, 
     EASM_TYPE_LABEL,
+    EASM_TYPE_MEM_LABEL,
     EASM_TYPE_BYTES, //this are too be placed in the data memory
 } Easm_TokenType;
 
@@ -87,6 +89,9 @@ typedef struct {
     const char *message;
 } Parse_Result;
 
+//// Globals
+Arena easm_arena = {0};
+
 
 //// BYTES PARSING: over time will be moved into a separate unit
 //This is the grammar
@@ -130,10 +135,12 @@ bool strtoi64(const char * ptr, int64_t *res)
     return end != ptr;
 } 
 
-bool strtou64(const char * ptr, uint64_t *res)
+bool strtou64(const char *ptr, uint64_t *res)
 {
     char *end;
-    *res = strtoull(ptr, &end, 0);
+    uint64_t start = 0;
+    start = strtoull(ptr, &end, 0);
+    if(res) *res = start;
     return end != ptr;
 } 
 
@@ -188,8 +195,77 @@ bool expect_remove_char(StringView *sv, char c)
     return false;
 }
 
+char next_char(const char *input, bool *res)
+{
+    *res = true;
+    if(input[0] == '\\'){
+        input++;
+        switch(input[0]){
+            case 't':{
+                return '\t';
+            }
+            case 'n':{
+                return '\n';
+            }
+            case 'r':{
+                return '\n';
+            }
+            case '0':{
+                return '\0';
+            }
+            case 'f':{
+                return '\f';
+            }
+            case 'a':{
+                return '\a';
+            }
+            case '"':
+                return '"';
+            case '\\':
+                return '\\';
+            default:
+                *res =false;
+        }   
+    }
+    return *input;
+    *res = true;
+}
+
+Parse_Result bytes_from_dq_string(StringView *input, Bytes *res){
+    Arena_Mark mark = arena_Mark(&easm_arena);
+    Parse_Result ret = {.ok = true, .message = ""};
+    while(input->count > 0 && input->data[0] != '"'){
+        char first = input->data[0];
+        if(first == '\\' && input->count < 2) {
+            ret.ok = false;
+            ret.message = "Malformed escaping in string";
+            RETURN_DEFER(ret, ret);
+        }
+
+        int skip = first == '\\' ? 2 : 1;
+        
+        char n = next_char(input->data, &ret.ok);
+        if(!ret.ok){
+            ret.ok = false;
+            ret.message = arena_sprintf(&easm_arena, "unsupported escape character `\\%s`", *input->data);
+            RETURN_DEFER(ret, ret);
+        }
+
+        da_append(res, n);
+        sv_take(input, skip);
+
+    }
+
+defer:
+    arena_restore(&easm_arena, mark);
+    return ret;
+}
+
+
+
 Parse_Result parse_bytes(StringView *input, Bytes *res)
 {
+    Arena_Mark mark = arena_Mark(&easm_arena);
     Parse_Result ret = {.ok = true, .message = ""};
 
     sv_trim_left(input);
@@ -199,35 +275,47 @@ Parse_Result parse_bytes(StringView *input, Bytes *res)
         if(sv_starts_with(*input, sv_from_cstr("'"))){
             /*char*/
 
-            if(input->count < 3){
+            if(input->count < 3 ||input->data[1] == '\\' && input->count < 4){
                 ret.ok = false;
                 ret.message = "Incomplete char spec";
-                return ret;
+                RETURN_DEFER(ret, ret);
             }
+
             sv_take(input, 1);
-            da_append(res, *input->data);
-            sv_take(input, 1);
+
+            if(input->data[0] == '\\'){
+                const char* char_array = sv_take(input, 2).data;
+                char n = next_char(char_array, &ret.ok);
+                da_append(res, n);
+                if(!ret.ok){
+                    ret.message = arena_sprintf(&easm_arena, "unsupported escape character `\\%s`", *input->data);
+                    RETURN_DEFER(ret, ret);
+                }
+            } else {
+                da_append(res, input->data[0]);
+                sv_take(input, 1);
+            }
+            
             if(!expect_remove_char(input, '\'')){
                 ret.ok = false;
                 ret.message = "invalid char literal, no closing `'`\n";
-                return ret;
+                RETURN_DEFER(ret, ret);
             }
 
         } else if(sv_starts_with(*input, sv_from_cstr("\""))){
             /* "str" */
             sv_take(input, 1);
-            StringView content = sv_take_until(input, is_double_quote);
-            da_append_array(res, content.data, content.count);
+            bytes_from_dq_string(input, res);
 
             if(!expect_remove_char(input, '"')){
                 ret.ok = false;
                 ret.message = "Unclosed string literal";
-                return ret;
+                RETURN_DEFER(ret, ret);
             }
 
         } else if (isHexStart(*input)){
             if(!(ret = parseHex(input, res)).ok) {
-                return ret;
+                RETURN_DEFER(ret, ret);
             }
         } else if(isBinStart(*input)){
             /*bin*/
@@ -245,20 +333,22 @@ Parse_Result parse_bytes(StringView *input, Bytes *res)
         /// Shoudnt be here
         ret.ok = false;
         ret.message = "Invalid bytes spec, expected `,` to separate byte items and `;` to terminate it.\n";
-        return ret;
+        RETURN_DEFER(ret, ret);
     }
 
     if(old_input_count <= input->count) {
         ret.ok = false;
         ret.message = "No content for string literal";
+        RETURN_DEFER(ret, ret);
     }
 
+defer:
+    arena_restore(&easm_arena, mark);
     return ret;
 }
 
 
-//// Globals
-Arena easm_arena = {0};
+
 
 
 static void expect_comment_or_empty(StringView sv, const char *filepath, size_t row, size_t col){
@@ -301,6 +391,7 @@ void easm_tokenize(StringView src, Easm_Tokens *tokens, const char *filepath)
             token.type = EASM_TYPE_INST;
             token.name = opcode;
             //Instructions with opernads
+
             if(sv_eq(opcode, sv_from_cstr("push")) || sv_eq(opcode, sv_from_cstr("dup")) ||
             sv_eq(opcode, sv_from_cstr("jr")) ||
             sv_eq(opcode, sv_from_cstr("jrc"))){
@@ -312,10 +403,14 @@ void easm_tokenize(StringView src, Easm_Tokens *tokens, const char *filepath)
                     log_error_and_exit("tokenizer: Expected a numeric operand", filepath, row, operand.data - line_start + 1);
                 } 
                 token.get.data = num_operand; 
-            } else if ( sv_eq(opcode, sv_from_cstr("jp"))   ||
+            } else if ( sv_eq(opcode, sv_from_cstr("pushl"))||
+                        sv_eq(opcode, sv_from_cstr("jp"))   ||
                         sv_eq(opcode, sv_from_cstr("jpc"))  ||
                         sv_eq(opcode, sv_from_cstr("call"))) {
-                            
+                
+                if(line.count < 1) {
+                    log_error_and_exit(arena_sprintf(&easm_arena, "tokenizer: no operand specified for `"SV_FMT"`.", SV_ARG(opcode)), filepath, row, line.data - line_start + 1);
+                }    
                 token.get.label = sv_chop_left(&line);
                 expect_comment_or_empty(line, filepath, row, line.data - line_start);
             } 
@@ -323,7 +418,11 @@ void easm_tokenize(StringView src, Easm_Tokens *tokens, const char *filepath)
             if(opcode.count < 2) log_error_and_exit("tokeniner: Unexpected empty label", token.filepath, token.row, token.col);
             opcode.count--;
             token.name = opcode;
-            token.type = EASM_TYPE_LABEL;
+            if(sv_starts_with(opcode, sv_from_cstr("."))){
+                token.type = EASM_TYPE_MEM_LABEL;
+            } else {
+                token.type = EASM_TYPE_LABEL;
+            }
         } else if(sv_starts_with(opcode, sv_from_cstr("db"))){
             //restore the whole content until after db and offer the stream to build a string
             // The line orientation wont fail, it will continue from where we stopped
@@ -357,12 +456,12 @@ void easm_tokenize(StringView src, Easm_Tokens *tokens, const char *filepath)
 
 //Tokens here must be all corresponding to instructions
 // No support for string literals in instructions or as instructions
-void easm_generate(Easm_Tokens tokens, Evm_Insts *program)
+void easm_generate(Easm_Tokens tokens, Evm_Insts *program, Bytes *memory)
 {
     Easm_Tokens labels = {0};
     Indices unresolved = {0};
     Easm_Tokens names = {0};
-    Bytes bytes = {0};
+    
     
     for(size_t i = 0; i < tokens.count ; ++i){
         //printf(SV_FMT"\n", SV_ARG(tokens.items[i].name));
@@ -372,12 +471,18 @@ void easm_generate(Easm_Tokens tokens, Evm_Insts *program)
                 if(sv_eq(token.name, sv_from_cstr("push"))){
                     da_append(program, EVM_INST_PUSH);
                     da_append(program, token.get.data);
+                } else if (sv_eq(token.name, sv_from_cstr("push_heapb"))){
+                     da_append(program, EVM_INST_PUSH_HEAP_B);
+                } else if (sv_eq(token.name, sv_from_cstr("pushl"))){
+                    da_append(&names, token);
+                    da_append(&unresolved, program->count + 1);
+                    da_append(program, EVM_INST_PUSH);
+                    da_append(program, UINT32_MAX); //placeholder (check it later)       
                 } else if(sv_eq(token.name, sv_from_cstr("dup"))) {
                     da_append(program, EVM_INST_DUP);
                     da_append(program, token.get.data);
                 } else if(sv_eq(token.name, sv_from_cstr("swap"))) {
                     da_append(program, EVM_INST_SWAP);
-                    
                 } else if(sv_eq(token.name, sv_from_cstr("add"))) {
                     da_append(program, EVM_INST_ADD);
                 } else if(sv_eq(token.name, sv_from_cstr("sub"))) {
@@ -434,6 +539,7 @@ void easm_generate(Easm_Tokens tokens, Evm_Insts *program)
                 } else if(sv_eq(token.name, sv_from_cstr("halt"))) {
                     da_append(program, EVM_INST_HALT);
                 } else {
+                    printf(SV_FMT", %zu\n", SV_ARG(token.name), token.name.count);
                     char message[1024] = {0};
                     char *start = "generator: Unknown opcode: ";
                     size_t start_size = strlen(start);
@@ -449,8 +555,15 @@ void easm_generate(Easm_Tokens tokens, Evm_Insts *program)
                 //printf("%zu\n", token.get.address);
             }
             break;
+            case EASM_TYPE_MEM_LABEL: {
+                token.get.address = memory->count;
+                da_append(&labels, token);
+                //printf("%zu\n", token.get.address);
+            }
+            break;
             case EASM_TYPE_BYTES: {
-                da_append_array(program, token.get.bytes.items, token.get.bytes.count);
+                da_append_array(memory, (const char *)(&token.get.bytes.count), sizeof(size_t)); //accomdating the hole lenght in memory
+                da_append_array(memory, token.get.bytes.items, token.get.bytes.count);
             }
             break;
             default:{
@@ -468,7 +581,7 @@ void easm_generate(Easm_Tokens tokens, Evm_Insts *program)
         bool found = false;
         for(size_t j = 0; j < labels.count; ++j){
             Easm_Token label = labels.items[j];
-            assert(label.type == EASM_TYPE_LABEL); 
+            assert(label.type == EASM_TYPE_LABEL || label.type == EASM_TYPE_MEM_LABEL); 
             if(sv_eq(token.get.label, label.name)){
                 found = true;
                 program->items[replacement_idx] = label.get.address;
@@ -501,18 +614,25 @@ int main(int argc, char **argv)
     StringBuilder sb;
     read_file_into_sb(&sb, filepath);
     StringView src = sv_from_parts(sb.items, sb.count);
-    Addr heap_base = 0;
-    (void)heap_base;
+   
 
     Easm_Tokens easm_tokens = {0};
     Evm_Insts evm_program = {0};
+    Bytes byte_memory = {0};
+   
     
     easm_tokenize(src, &easm_tokens, filepath);
-    easm_generate(easm_tokens, &evm_program);// &heap_base);
+    easm_generate(easm_tokens, &evm_program, &byte_memory);
 
-    //Heap_base by default is 0
+     {
+        StringBuilder sb = {0};
+        sb_append_sstr(&sb, byte_memory.items, byte_memory.count);
+        write_file_from_sb(&sb, "data.bin", NULL);
+    }
+
+    
     Evm evm = {0};
-    evm_init(&evm, evm_program);
+    evm_init(&evm, evm_program, byte_memory.items, byte_memory.count);
     evm_run(&evm);
     evm_free(&evm);
     free(evm_program.items);
