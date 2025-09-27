@@ -624,12 +624,6 @@ int main(int argc, char **argv)
     easm_tokenize(src, &easm_tokens, filepath);
     easm_generate(easm_tokens, &evm_program, &byte_memory);
 
-     {
-        StringBuilder sb = {0};
-        sb_append_sstr(&sb, byte_memory.items, byte_memory.count);
-        write_file_from_sb(&sb, "data.bin", NULL);
-    }
-
     
     Evm evm = {0};
     evm_init(&evm, evm_program, byte_memory.items, byte_memory.count);
