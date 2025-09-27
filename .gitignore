@@ -1,3 +1,6 @@
 .*
 !.gitignore
 build/*
+*.bin
+parse_bytes*
+tags
