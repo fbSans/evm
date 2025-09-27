@@ -9,36 +9,10 @@
 
 #include <inttypes.h>
 
-#define DA_INIT_CAP (1024)
+#define HELPERS_REMOVE_PREFIX
+#include "helpers.h"
+
 #define EVM_MEM_CAP (64 * 1024)
-
-#define da_append(da, item) do {                                                      \
-    if((da)->size >= (da)->capacity){                                                 \
-        if((da)->capacity == 0) (da)->items = NULL;                                   \
-        (da)->capacity = ((da)->capacity == 0) ? DA_INIT_CAP  : (da)->capacity * 2;   \
-        (da)->items = realloc((da)->items, (da)->capacity * sizeof(*(da)->items));    \
-        memset((da)->items + (da)->size, 0, (da)->capacity - (da)->size);             \
-    }                                                                                 \
-    (da)->items[(da)->size++] = item;\
-} while (0)
-
-#define UNIMPLEMENTED do {                                                              \
-    fprintf(stderr, "%s:%d %s: not implemented yet!\n", __FILE__, __LINE__, __func__);  \
-    exit(1);                                                                            \
-}while(0)
-
-#define UNREACHABLE do {                                                               \
-    fprintf(stderr, "%s:%d %s: unreachable!\n",__FILE__, __LINE__,  __func__);         \
-    exit(1);                                                                           \
-}while(0)
-
-#define TODO(msg) do {                                                                 \
-    fprintf(stderr, "todo: %s:%d %s: `%s`\n",__FILE__, __LINE__,  __func__, msg);              \
-    exit(1);                                                                           \
-}while(0)
-
-#define ARRAY_LEN(a) sizeof((a))/sizeof((a)[0])
-
 
 typedef enum {
     EVM_INST_PUSH = 0,
@@ -77,13 +51,13 @@ typedef uint64_t Evm_Inst;
 
 typedef struct {
     Evm_Inst *items; //in order to accept 64bit immedia values
-    size_t size;
+    size_t count;
     size_t capacity;
 } Evm_Insts;
 
 typedef struct {
     Data *items;
-    size_t size;
+    size_t count;
     size_t capacity;
 } Stack;
 

@@ -3,8 +3,8 @@
 #include <string.h>
 #include <assert.h>
 #include <stdbool.h>
-
 #include <inttypes.h>
+
 #include "evm.h"
 
 char *inst_to_str[EVM_INST_COUNT] = {
@@ -31,7 +31,7 @@ char *inst_to_str[EVM_INST_COUNT] = {
 
 void dump_stack(const Stack *s)
 {
-    for(size_t i = 0; i < s->size; ++i){
+    for(size_t i = 0; i < s->count; ++i){
         printf ("index: %zu value: %zu   ", i, s->items[i]);
     }
     printf("\n");
@@ -44,19 +44,19 @@ void stack_push(Stack *s, Data d)
 
 Data stack_pop(Stack *s)
 {
-    assert(s->size > 0 && "stack_pop:  STACK UNDERFLOW");
-    return s->items[--s->size];
+    assert(s->count > 0 && "stack_pop:  STACK UNDERFLOW");
+    return s->items[--s->count];
 }
 
 Data stack_peek(Stack *s, size_t offset)
 {
-    assert(s->size > 0 && "stack_peek: STACK UNDERFLOW");
-    assert(s->size - offset - 1 <= s->size && "stack_peek: STACK ACCESS OUT OF BOUNDS");
-    return s->items[s->size - offset - 1];
+    assert(s->count > 0 && "stack_peek: STACK UNDERFLOW");
+    assert(s->count - offset - 1 <= s->count && "stack_peek: STACK ACCESS OUT OF BOUNDS");
+    return s->items[s->count - offset - 1];
 }
 
 
-
+//TODO: initialize heap_base
 void evm_init(Evm *evm, Evm_Insts program)
 {
     memset(evm, 0, sizeof(*evm));
@@ -76,7 +76,7 @@ void evm_free(Evm* evm)
 
 Evm_Inst evm_next_inst(Evm *evm)
 {
-    assert(evm->ip < evm->program.size && "PROGRAM MEMORY ACCESS OUT OF BOUNDS");
+    assert(evm->ip < evm->program.count && "PROGRAM MEMORY ACCESS OUT OF BOUNDS");
     return evm->program.items[evm->ip++];
 }
 
