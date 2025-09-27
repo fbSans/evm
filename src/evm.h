@@ -16,6 +16,7 @@
 
 typedef enum {
     EVM_INST_PUSH = 0,
+    EVM_INST_PUSH_HEAP_B,
     EVM_INST_DUP,
     EVM_INST_SWAP,
     EVM_INST_ADD,
@@ -42,7 +43,7 @@ typedef enum {
     EVM_INST_COUNT
 } Evm_Opcode;
 
-static_assert(EVM_INST_COUNT == 24, "Change in EVM_INST_COUNT");
+static_assert(EVM_INST_COUNT == 25, "Change in EVM_INST_COUNT");
 
 
 typedef uint64_t Addr;
@@ -72,7 +73,7 @@ typedef struct {
     Stack call_stack;
 } Evm;
 
-void evm_init(Evm *evm, Evm_Insts program);
+void evm_init(Evm *evm, Evm_Insts program, const char *initial_data, size_t initial_data_size);
 void evm_run(Evm *evm);
 void evm_free(Evm* evm);
 

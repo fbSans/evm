@@ -56,14 +56,17 @@ Data stack_peek(Stack *s, size_t offset)
 }
 
 
-//TODO: initialize heap_base
-void evm_init(Evm *evm, Evm_Insts program)
+void evm_init(Evm *evm, Evm_Insts program, const char *initial_data, size_t initial_data_size)
 {
     memset(evm, 0, sizeof(*evm));
     evm->program = program;
-    evm->memory_capacity = EVM_MEM_CAP;
+    evm->memory_capacity = EVM_MEM_CAP > initial_data_size ? EVM_MEM_CAP : initial_data_size;
     evm->memory = malloc(evm->memory_capacity);
     memset(evm->memory, 0, evm->memory_capacity);
+    if(initial_data_size > 0 && initial_data){
+        memcpy(evm->memory, initial_data, initial_data_size);
+        evm->heap_base = initial_data_size;
+    }
 }
 
 /**Won't free the program, because it's from external source*/
@@ -137,6 +140,11 @@ void evm_run(Evm *evm){
             case EVM_INST_PUSH: {
                 Data a = evm_next_inst(evm); 
                 evm_push(evm, a);
+            }
+            break;
+            case EVM_INST_PUSH_HEAP_B: {
+                Data heap_base = evm->heap_base;
+                evm_push(evm, heap_base);
             }
             break;
             case EVM_INST_DUP: { 
@@ -364,7 +372,7 @@ static void testFib(void)
     //halt
     da_append(&program, EVM_INST_HALT); 
     
-    evm_init(&evm, program);
+    evm_init(&evm, program, NULL, 0);
     evm_run(&evm);
     evm_free(&evm);
     free(program.items);
