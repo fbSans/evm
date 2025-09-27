@@ -38,6 +38,12 @@ typedef enum {
 } Easm_TokenType;
 
 typedef struct {
+    char *items;
+    size_t count;
+    size_t capacity;
+} Bytes;
+
+typedef struct {
     Easm_TokenType type;
     StringView name;
     union
@@ -46,6 +52,7 @@ typedef struct {
         int64_t offset;
         uint64_t address;
         StringView label;
+        Bytes bytes;
     } get;
     const char *filepath;
     size_t row;
@@ -72,6 +79,50 @@ typedef struct {
     size_t capacity;
 } Svs;
 
+// Todo: Integrate this two types bellow into the rest of the parser
+
+
+typedef struct {
+    bool ok;
+    const char *message;
+} Parse_Result;
+
+
+//// BYTES PARSING: over time will be moved into a separate unit
+//This is the grammar
+// bytes       ::= simple, | simple, bytes 
+// simple      ::= 'char' |"char*" | num
+// char        ::= '<ascii_literal>'
+// num         ::= [:ascii-num:] | bin | hex
+// hex         ::= 0x[0-9a-fA-F]{2}
+// bin         ::= 0b[01]{8}
+
+
+bool ishex(char c)
+{
+    return isdigit(c) || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+}
+
+bool isbin(char c){
+    return '0' <= c || c <= '1';
+}
+
+
+bool isHexStart(StringView input)
+{
+    return sv_starts_with(input, sv_from_cstr("0x")) || sv_starts_with(input, sv_from_cstr("0X"));
+}
+
+bool isBinStart(StringView input)
+{
+    return sv_starts_with(input, sv_from_cstr("0b")) || sv_starts_with(input, sv_from_cstr("0B"));
+}
+
+bool is_double_quote(char c)
+{
+    return c == '"';
+}
+
 bool strtoi64(const char * ptr, int64_t *res)
 {
     char *end;
@@ -86,25 +137,154 @@ bool strtou64(const char * ptr, uint64_t *res)
     return end != ptr;
 } 
 
+char hex_value(char c){
+    assert(ishex(c) && "Expected hexadecimal input");
+    if(isdigit(c)) return c - '0';
+    if(c <='f') return c - 'a';
+    return c - 'A';
+}
+
+Parse_Result parseHex(StringView *input, Bytes *res)
+{
+    sv_take(input, 2); // remove 0x or 0X
+    StringView candidate = sv_clone(*input);
+    candidate = sv_take_while(&candidate, ishex);
+    if(candidate.count < 1) {
+        fprintf(stderr, "");
+        return (Parse_Result) {
+            .ok = false,
+            .message = "Invalid hex spec",
+        };
+    }
+
+    StringView hexchars = sv_take(&candidate, 2);
+    sv_take(input, hexchars.count);
+
+    
+    if(hexchars.count == 1){
+        const char first = *sv_take(&hexchars, 1).data;
+        da_append(res, hex_value(first));
+        return (Parse_Result){
+            .ok = true,
+        };
+    }
+         
+    char val = 16 * hex_value(hexchars.data[0]) + hex_value(hexchars.data[1]);
+    da_append(res, val);
+    return (Parse_Result) {
+        .ok = true,
+        .message = "",
+    };
+}
+
+bool expect_remove_char(StringView *sv, char c)
+{
+    if(sv->count == 0) return false;
+    sv_trim_left(sv);
+    if (sv->data[0] == c) {
+        sv_take(sv, 1);
+        return true;
+    }
+    return false;
+}
+
+Parse_Result parse_bytes(StringView *input, Bytes *res)
+{
+    Parse_Result ret = {.ok = true, .message = ""};
+
+    sv_trim_left(input);
+    size_t old_input_count = input->count;
+    while(input->count > 0) {
+        sv_trim_left(input);
+        if(sv_starts_with(*input, sv_from_cstr("'"))){
+            /*char*/
+
+            if(input->count < 3){
+                ret.ok = false;
+                ret.message = "Incomplete char spec";
+                return ret;
+            }
+            sv_take(input, 1);
+            da_append(res, *input->data);
+            sv_take(input, 1);
+            if(!expect_remove_char(input, '\'')){
+                ret.ok = false;
+                ret.message = "invalid char literal, no closing `'`\n";
+                return ret;
+            }
+
+        } else if(sv_starts_with(*input, sv_from_cstr("\""))){
+            /* "str" */
+            sv_take(input, 1);
+            StringView content = sv_take_until(input, is_double_quote);
+            da_append_array(res, content.data, content.count);
+
+            if(!expect_remove_char(input, '"')){
+                ret.ok = false;
+                ret.message = "Unclosed string literal";
+                return ret;
+            }
+
+        } else if (isHexStart(*input)){
+            if(!(ret = parseHex(input, res)).ok) {
+                return ret;
+            }
+        } else if(isBinStart(*input)){
+            /*bin*/
+            TODO("parse bin");
+        } else if(*input->data >= '0' && *input->data <= '9'){
+            TODO("parse decimal");
+        }
+
+        bool sep = expect_remove_char(input, ',');
+        if(sep) continue;
+
+        bool term = expect_remove_char(input, ';');
+        if (term) break;
+
+        /// Shoudnt be here
+        ret.ok = false;
+        ret.message = "Invalid bytes spec, expected `,` to separate byte items and `;` to terminate it.\n";
+        return ret;
+    }
+
+    if(old_input_count <= input->count) {
+        ret.ok = false;
+        ret.message = "No content for string literal";
+    }
+
+    return ret;
+}
+
+
+//// Globals
+Arena easm_arena = {0};
+
+
 static void expect_comment_or_empty(StringView sv, const char *filepath, size_t row, size_t col){
     sv_trim_left(&sv);
     if(!sv_starts_with(sv, sv_from_cstr(EASM_COMMENT)) && sv.count > 0){
-        fprintf(stderr, "%s:%zu:%zu Unexpected comment or empty line this location\n", filepath, row, col);
+        fprintf(stderr, "%s:%zu:%zu Expected comment or empty line this location\n", filepath, row, col);
+        arena_free(&easm_arena);
         exit(1);
     }
 }
 
 static void log_error_and_exit(const char *msg, const char *filepath, size_t row, size_t col){
     fprintf(stderr, "%s:%zu:%zu %s\n", filepath, row, col, msg);
+    arena_free(&easm_arena);
     exit(1);
 }
+
 //TODO: Add a string builder for better error reports building
 void easm_tokenize(StringView src, Easm_Tokens *tokens, const char *filepath) 
 {
+    Arena_Mark mark = arena_Mark(&easm_arena);
     if(tokens == NULL) return;
     size_t row = 0;
     const char *line_start = NULL;
     while(src.count > 0) {
+        StringView  snapshot = src;
         StringView line = sv_next_line(&src);
         row++;
         line_start = line.data;
@@ -144,7 +324,22 @@ void easm_tokenize(StringView src, Easm_Tokens *tokens, const char *filepath)
             opcode.count--;
             token.name = opcode;
             token.type = EASM_TYPE_LABEL;
-        } else {
+        } else if(sv_starts_with(opcode, sv_from_cstr("db"))){
+            //restore the whole content until after db and offer the stream to build a string
+            // The line orientation wont fail, it will continue from where we stopped
+            token.name = opcode;
+            token.type = EASM_TYPE_BYTES;
+
+            sv_take(&opcode, 3);
+            src = sv_clone(snapshot);
+            sv_trim_left(&src);
+            sv_take(&src, 2); // remove db
+            Parse_Result res = parse_bytes(&src, &token.get.bytes);
+            line.count = 0;
+            if(!res.ok){
+                log_error_and_exit(arena_sprintf(&easm_arena, "tokenizer: %s", res.message), token.filepath, token.row, token.col);
+            }
+        }else {
             char message[1024] = {0};
             char *start = "tokeninzer: Unknown opcode: ";
             size_t start_size = strlen(start);
@@ -157,14 +352,17 @@ void easm_tokenize(StringView src, Easm_Tokens *tokens, const char *filepath)
         expect_comment_or_empty(line, filepath, row, line.data - line_start + 1);
         da_append(tokens, token);
     }
+    arena_restore(&easm_arena, mark);
 }
 
 //Tokens here must be all corresponding to instructions
+// No support for string literals in instructions or as instructions
 void easm_generate(Easm_Tokens tokens, Evm_Insts *program)
 {
     Easm_Tokens labels = {0};
     Indices unresolved = {0};
     Easm_Tokens names = {0};
+    Bytes bytes = {0};
     
     for(size_t i = 0; i < tokens.count ; ++i){
         //printf(SV_FMT"\n", SV_ARG(tokens.items[i].name));
@@ -252,7 +450,7 @@ void easm_generate(Easm_Tokens tokens, Evm_Insts *program)
             }
             break;
             case EASM_TYPE_BYTES: {
-                TODO("Handle EAST_TYPE_BYTES in generation");
+                da_append_array(program, token.get.bytes.items, token.get.bytes.count);
             }
             break;
             default:{
@@ -308,6 +506,7 @@ int main(int argc, char **argv)
 
     Easm_Tokens easm_tokens = {0};
     Evm_Insts evm_program = {0};
+    
     easm_tokenize(src, &easm_tokens, filepath);
     easm_generate(easm_tokens, &evm_program);// &heap_base);
 

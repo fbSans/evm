@@ -1,5 +1,10 @@
 ; A more convinient way of writing bytes to the momory is needed
 
+; .hello "Hello world"
+
+; loadstr .hello
+
+.bytes:
 
 push 0x48
 push 0

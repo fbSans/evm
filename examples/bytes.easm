@@ -1,3 +1,8 @@
+jp main
+
+main:
+    
+    halt
+
 hello:
-    db 0x61, 0x65, 0x6c, 0x6c, 0x6f, 0x33
-hello_end
+    db "hello world";
