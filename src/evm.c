@@ -158,6 +158,10 @@ void evm_run(Evm *evm){
                 evm_push(evm, a);
             }
             break;
+            case  EVM_INST_POP: {
+                evm_pop(evm);
+            }
+            break;
             case EVM_INST_PUSH_HEAP_B: {
                 Data heap_base = evm->heap_base;
                 evm_push(evm, heap_base);

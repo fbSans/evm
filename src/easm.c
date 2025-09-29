@@ -11,7 +11,7 @@
 #define EASM_COMMENT ";"
 
 char *easm_instrunctions[] = {
-    "push", "dup", "swap", 
+    "push", "pop", "dup", "swap", 
     "add", "sub","multu", 
     "printu64", "halt", 
     "jp", "jpc", "jc", 
@@ -480,6 +480,8 @@ void easm_generate(Easm_Tokens tokens, Evm_Insts *program, Bytes *memory)
                     da_append(&unresolved, program->count + 1);
                     da_append(program, EVM_INST_PUSH);
                     da_append(program, UINT32_MAX); //placeholder (check it later)       
+                }  else if (sv_eq(token.name, sv_from_cstr("pop"))){
+                    da_append(program, EVM_INST_POP);
                 } else if(sv_eq(token.name, sv_from_cstr("dup"))) {
                     da_append(program, EVM_INST_DUP);
                     da_append(program, token.get.data);

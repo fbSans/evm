@@ -1,0 +1,6 @@
+jp main
+
+main:
+    push 1
+    pop
+halt

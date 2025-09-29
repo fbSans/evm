@@ -16,6 +16,7 @@
 
 typedef enum {
     EVM_INST_PUSH = 0,
+    EVM_INST_POP,
     EVM_INST_PUSH_HEAP_B,
     EVM_INST_DUP,
     EVM_INST_SWAP,
@@ -43,7 +44,7 @@ typedef enum {
     EVM_INST_COUNT
 } Evm_Opcode;
 
-static_assert(EVM_INST_COUNT == 25, "Change in EVM_INST_COUNT");
+static_assert(EVM_INST_COUNT == 26, "Change in EVM_INST_COUNT");
 
 
 typedef uint64_t Addr;
