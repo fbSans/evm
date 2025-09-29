@@ -3,17 +3,23 @@
 jp main
 
 main:
-    pushl .hello
+    pushl .str
+    call load-bytes
+    puts
+halt
+
+
+;; Example of how to load bytes -
+load-bytes:
     dup 0
     read64
     swap 1
     push 1
-    add 
-    puts
-    halt
+    add
+    ret
 
-.hello:
-    db "hello world!\n";
+.str:
+    db "hello world\n";
 
 
 
