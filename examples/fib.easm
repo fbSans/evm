@@ -12,7 +12,7 @@ loop:
     push 0
     puts        ;puts 0 1
 
-    swap
+    swap 1
     dup 1
     add         ;calculate the next
 

@@ -15,10 +15,10 @@ loop:
     push 0  ;ptr
     puts    ;puts ptr size
 
-    swap
+    swap 1
     push 1
     add
-    swap
+    swap 1
 
     push 0xffffffffffffff ;loop if acc <= 0xffffffff
     dup 1

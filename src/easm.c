@@ -392,9 +392,11 @@ void easm_tokenize(StringView src, Easm_Tokens *tokens, const char *filepath)
             token.name = opcode;
             //Instructions with opernads
 
-            if(sv_eq(opcode, sv_from_cstr("push")) || sv_eq(opcode, sv_from_cstr("dup")) ||
-            sv_eq(opcode, sv_from_cstr("jr")) ||
-            sv_eq(opcode, sv_from_cstr("jrc"))){
+            if( sv_eq(opcode, sv_from_cstr("push"))  ||
+                sv_eq(opcode, sv_from_cstr("dup"))   ||
+                sv_eq(opcode, sv_from_cstr("swap"))  ||
+                sv_eq(opcode, sv_from_cstr("jr"))    ||
+                sv_eq(opcode, sv_from_cstr("jrc"))){
 
                 uint64_t num_operand;
                 StringView operand = sv_chop_left(&line);
@@ -483,6 +485,7 @@ void easm_generate(Easm_Tokens tokens, Evm_Insts *program, Bytes *memory)
                     da_append(program, token.get.data);
                 } else if(sv_eq(token.name, sv_from_cstr("swap"))) {
                     da_append(program, EVM_INST_SWAP);
+                    da_append(program, token.get.data);
                 } else if(sv_eq(token.name, sv_from_cstr("add"))) {
                     da_append(program, EVM_INST_ADD);
                 } else if(sv_eq(token.name, sv_from_cstr("sub"))) {
@@ -521,6 +524,7 @@ void easm_generate(Easm_Tokens tokens, Evm_Insts *program, Bytes *memory)
                     da_append(program, EVM_INST_PUSH);
                     da_append(program, UINT32_MAX); //placeholder (check it later)
                     da_append(program, EVM_INST_SWAP);
+                    da_append(program, 1);
                     da_append(program, EVM_INST_JPC);
                 } else if ( sv_eq(token.name, sv_from_cstr("jr"))){
                     UNIMPLEMENTED;
@@ -612,7 +616,7 @@ int main(int argc, char **argv)
     
     const char *filepath = shift_args(&argc, &argv);
     StringBuilder sb;
-    read_file_into_sb(&sb, filepath);
+    if(!read_file_into_sb(&sb, filepath)) return 1;
     StringView src = sv_from_parts(sb.items, sb.count);
    
 

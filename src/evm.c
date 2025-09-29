@@ -55,6 +55,17 @@ Data stack_peek(Stack *s, size_t offset)
     return s->items[s->count - offset - 1];
 }
 
+void stack_swap(Stack *s, size_t offset)
+{   
+    assert(s->count > 0 && "stack_peek: STACK UNDERFLOW");
+    assert(s->count - offset - 1 <= s->count && "stack_peek: STACK ACCESS OUT OF BOUNDS");
+    size_t top = s->count - 1;
+    size_t other = top - offset;
+    Data t = s->items[top];
+    s->items[top] = s->items[other];
+    s->items[other] = t;
+}
+
 
 void evm_init(Evm *evm, Evm_Insts program, const char *initial_data, size_t initial_data_size)
 {
@@ -107,6 +118,11 @@ Data evm_peek(Evm *evm, size_t offset)
     return stack_peek(&evm->stack, offset);
 }
 
+void evm_swap(Evm *evm, size_t offset)
+{
+    stack_swap(&evm->stack, offset);
+}
+
 void evm_write8(Evm *evm, Addr dst, Data a)
 {
     assert(dst < evm->memory_capacity && "DATA MEMEORY ACCESS OUT OF BOUNDS");
@@ -154,10 +170,8 @@ void evm_run(Evm *evm){
             }
             break;
             case EVM_INST_SWAP: { 
-                Data a = evm_pop(evm);
-                Data b = evm_pop(evm);
-                evm_push(evm, a);
-                evm_push(evm, b);
+                Data offset = evm_next_inst(evm);
+                evm_swap(evm, offset);
             }
             break;
             case EVM_INST_ADD:{

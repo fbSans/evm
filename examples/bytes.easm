@@ -6,7 +6,7 @@ main:
     pushl .hello
     dup 0
     read64
-    swap
+    swap 1
     push 1
     add 
     puts
