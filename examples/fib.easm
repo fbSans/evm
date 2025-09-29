@@ -1,6 +1,6 @@
     push 0x0a
     push 0
-    write8        ;write 0 '\n'
+    write8        ;;write 0 '\n'
 
     push 0
     push 1
@@ -10,14 +10,14 @@ loop:
 
     push 1
     push 0
-    puts        ;puts 0 1
+    puts        ;;puts 0 1
 
     swap 1
     dup 1
-    add         ;calculate the next
+    add         ;;calculate the next
 
     dup 0
-    push 0xffffffffffffff ;push uint64_max
+    push 0xffffffffffffff ;;push uint64_max
 
     gt
 

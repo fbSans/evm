@@ -1,9 +1,9 @@
     push 0x0a
     push 0
-    write8         ;write 0 '\n'
+    write8         ;;write 0 '\n'
 
-    push 1          ;initial value
-    push 1          ;acc
+    push 1          ;;initial value
+    push 1          ;;acc
 
 loop:
     dup 1
@@ -11,16 +11,16 @@ loop:
     dup 0 
     printu64
 
-    push 1  ;size
-    push 0  ;ptr
-    puts    ;puts ptr size
+    push 1  ;;size
+    push 0  ;;ptr
+    puts    ;;puts ptr size
 
     swap 1
     push 1
     add
     swap 1
 
-    push 0xffffffffffffff ;loop if acc <= 0xffffffff
+    push 0xffffffffffffff ;;loop if acc <= 0xffffffff
     dup 1
     le
     jpc loop

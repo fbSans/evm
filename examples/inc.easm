@@ -1,15 +1,15 @@
    push 0x0a
    push 0
-   write8         ;write 0 '\n'
+   write8         ;;write 0 '\n'
    
-   push 0x0         ;initial value
+   push 0x0         ;;initial value
 loop:
    dup 0
    printu64
  
    push 1
    push 0
-   puts       ; puts 0 1 -- '\n'
+   puts       ;; puts 0 1 -- '\n'
 
    push 0x1
    add

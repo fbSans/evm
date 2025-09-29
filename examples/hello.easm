@@ -1,8 +1,8 @@
-; A more convinient way of writing bytes to the momory is needed
+;; A more convinient way of writing bytes to the momory is needed
 
-; .hello "Hello world"
+;; .hello "Hello world"
 
-; loadstr .hello
+;; loadstr .hello
 
 .bytes:
 

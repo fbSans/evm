@@ -8,7 +8,7 @@
 
 #define HELPERS_IMPLEMENTATION
 #include "evm.h"
-#define EASM_COMMENT ";"
+#define EASM_COMMENT ";;"
 
 char *easm_instrunctions[] = {
     "push", "pop", "dup", "swap", 
