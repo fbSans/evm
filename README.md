@@ -25,3 +25,4 @@
 Each of these memory components are completely separate, and special instructions must be used to transfer data between.
 
 ### easm - the assembler
+For now it is working as an AOT interpreter, but the goal is to make it generate the bytecode that will be ran by evm. 
