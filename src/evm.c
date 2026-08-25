@@ -181,21 +181,21 @@ void evm_run(Evm *evm){
             case EVM_INST_ADD:{
                 Data a = evm_pop(evm);
                 Data b = evm_pop(evm);  
-                Data s = b + a;
+                Data s = a + b;
                 evm_push(evm, s);
             }
             break;
             case EVM_INST_SUB:{
                 Data a = evm_pop(evm);
                 Data b = evm_pop(evm);  
-                Data s = b - a;
+                Data s = a - b;
                 evm_push(evm, s);
             } 
             break;
             case EVM_INST_MULTU: {
                 Data a = evm_pop(evm);
                 Data b = evm_pop(evm);  
-                Data s = b * a;
+                Data s = a * b;
                 evm_push(evm, s);
             } 
             break;
