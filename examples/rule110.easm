@@ -2,7 +2,34 @@ jp main
 
 
 main:
+    push 10                                 ;; stack: count                     <- top
+    push 0                                  ;; stack:  count i                  <- top
+main_loop:
+    dup 1                                   ;; stack:  count i count            <- top
+    dup 1                                   ;; stack:  count i count i          <- top
+    ge                                      ;; stack:  count i (i >= count)     <- top
+    jpc end_main_loop
+    call r110_get_current_state_ptr         ;; stack: count i state_ptr         <- top
+    call print_str                          ;; stack: count i                   <- top
+
+
+    call r110_update_state                  ;; stack: count i                   <- top
+    push 1
+    add                                     ;; stack: count i                   <- top
+    jp main_loop
+
+end_main_loop:
     halt
+
+debug:
+    push 2222
+    printu64
+    pushl .newline
+    call print_str
+    halt
+    ret
+
+;;;;;;;;;;;;;; Game STATE  ;;;;;;;;;;;;;;;
 .r110_state1: 
     db "000000000000000001";
 .r110_state2: 
@@ -11,8 +38,7 @@ main:
     db 0x00;
 .r110_other_state:
     db 0x00;
-.r110_iterator:
-    db 0x00;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;;; R110 Function ;;;;;;;;;;;;;
 state_ptr_from_index:
@@ -47,18 +73,22 @@ r110_get_next_state_ptr:
 ;;;;;;;;;;;;;; R110 Function ;;;;;;;;;;;;;
 r110_update_state:
     ;; Note: only inner values of the state array need updating
-    push 1                  ;; stack: i                         <- top
+    push 1                         ;; stack: i                         <- top
+    
 r110_state_loop1:
     dup 0                           ;; stack:  i i                          <- top
     pushl .r110_state1              ;; stack:  i i state_mem                <- top
+    
     call array_len                  ;; stack:  i i state_len                <- top
+
+call debug
     push 1                          ;; stack:  i i state_len 1              <- top
-    swap                            ;; stack:  i i 1 state_len              <- top
+    swap 1                          ;; stack:  i i 1 state_len              <- top
     sub                             ;; stack:  i i last_index               <- top
     le                              ;; stack:  i (last_index <= i)          <- top
     jpc r110_update_state_loop1_end ;; if (last_index <= i) break   
-    dup                             ;; stack:  i i                          <- top
-    dup                             ;; stack:  i i i                        <- top
+    dup 0                           ;; stack:  i i                          <- top                         
+    dup 0                           ;; stack:  i i i                        <- top
     call r110_new_value             ;; stack:  i i new_value                <- top
     swap 1                          ;; stack:  i new_value i                <- top
     call r110_get_next_state_ptr    ;; stack:  i new_value i next_state     <- top
@@ -70,6 +100,7 @@ r110_state_loop1:
 
 r110_update_state_loop1_end:
     pop                     ;; clean the stack
+    call r110_swap_state
     ret
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -82,14 +113,16 @@ r110_new_value:
                                         ;; stack: res i                             <- top
     call r110_get_current_state_ptr     ;; stack: res i curr_state_ptr              <- top
     swap 1                              ;; stack: res curr_state_ptr i              <- top
-    dup                                 ;; stack: res curr_state_ptr i i            <- top
+    dup  1                               ;; stack: res curr_state_ptr i i            <- top
     push 1                              ;; stack: res curr_state_ptr i i 1          <- top
     sub                                 ;; stack: res curr_state_ptr i (i - 1)      <- top
     swap 1                              ;; stack: res curr_state_ptr (i - 1) i      <- top
     swap 2                              ;; stack: res i (i - 1) curr_state_ptr      <- top
     call array_at                       ;; stack: res i (left)                      <- top
     call char_as_digit                  ;; stack: res i (left_digit)                <- top
-    swap 1                              ;; stack: res (left_digit) i                <- top
+    push 4                              ;; stack: res i (left_digit) 4              <- top
+    multu                               ;; stack: res i (4*left_digit)              <- top
+    swap 1                              ;; stack: res (4*left_digit) i              <- top
     swap 2                              ;; stack: i (left_digit) res                <- top
     add                                 ;; stack: i res
 
@@ -98,7 +131,7 @@ r110_new_value:
                                         ;; stack: res i                             <- top
     call r110_get_current_state_ptr     ;; stack: res i curr_state_ptr              <- top
     swap 1                              ;; stack: res curr_state_ptr i              <- top
-    dup                                 ;; stack: res curr_state_ptr i i            <- top
+    dup  1                               ;; stack: res curr_state_ptr i i            <- top
     swap 2                              ;; stack: res i i curr_state_ptr            <- top
     call array_at                       ;; stack: res i (middle)                    <- top
     call char_as_digit                  ;; stack: res i (middle_digit)              <- top
@@ -113,17 +146,15 @@ r110_new_value:
                                         ;; stack: res i                             <- top
     call r110_get_current_state_ptr     ;; stack: res i curr_state_ptr              <- top
     swap 1                              ;; stack: res curr_state_ptr i              <- top
-    dup                                 ;; stack: res curr_state_ptr i i            <- top
+    dup  1                              ;; stack: res curr_state_ptr i i            <- top
     push 1                              ;; stack: res curr_state_ptr i i 1          <- top
     add                                 ;; stack: res curr_state_ptr i (i + 1)      <- top
     swap 1                              ;; stack: res curr_state_ptr (i + 1) i      <- top
     swap 2                              ;; stack: res i (i + 1) curr_state_ptr      <- top
     call array_at                       ;; stack: res i (right)                     <- top
     call char_as_digit                  ;; stack: res i (right_digit)               <- top
-    push 4                              ;; stack: res i (right_digit) 4             <- top
-    multu                               ;; stack: res i (4*right_digit)             <- top
-    swap 1                              ;; stack: res (4*right_digit) i             <- top
-    swap 2                              ;; stack: i (4*right_digit) res             <- top
+    swap 1                              ;; stack: res (right_digit) i               <- top
+    swap 2                              ;; stack: i (right_digit) res               <- top
     add                                 ;; stack: i res                             <- top
 
     swap 1                              ;; stack: res i                             <- top
@@ -132,19 +163,19 @@ r110_new_value:
     
     ;; Checking the new value rules
     ;; CASE 0
-    dup                                 ;; stack: res res                           <- top
+    dup  1                               ;; stack: res res                           <- top
     push 0                              ;; stack: res 0                             <- top
     eq                                  ;; stack: res (res == 0)                    <- top
     jpc r110_update_state_push_zero
 
     ;; CASE 4
-    dup                                 ;; stack: res res                           <- top
+    dup  1                               ;; stack: res res                           <- top
     push 4                              ;; stack: res 4                             <- top
     eq                                  ;; stack: res (res == 4)                    <- top
     jpc r110_update_state_push_zero
 
     ;; CASE 7
-    dup                                 ;; stack: res res                           <- top
+    dup  1                              ;; stack: res res                           <- top
     push 7                              ;; stack: res 7                             <- top
     eq                                  ;; stack: res (res == 7)                    <- top
     jpc r110_update_state_push_zero
@@ -162,7 +193,7 @@ r110_new_value:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;;; R110 Function ;;;;;;;;;;;;;
-r110_swap_state   
+r110_swap_state:   
     pushl .r110_current_state
     read8
     push 1
@@ -193,9 +224,11 @@ array_bounds_check:
     dup 1                           ;; stack:      i str_mem i                  <- top
     dup 1                           ;; stack:      i str_mem i str_mem          <- top
                                     
-    array_len                       ;; stack:      i str_mem i array_len        <- top
+    call array_len                  ;; stack:      i str_mem i array_len        <- top
     gt                              ;; stack:      i str_mem (array_len > i)    <- top
-    jpc array_bound_check_ok        ;; stack:      i str_mem                    <- top
+    jpc array_bounds_check_ok        ;; stack:      i str_mem                    <- top
+    swap 1                          ;; stack:      i str_mem                    <- top
+    call array_len                  ;; stack:      i array_len                  <- top
     call print_out_of_bounds        ;; stack:                                   <- top
     halt                
 array_bounds_check_ok:  
@@ -208,25 +241,24 @@ array_bounds_check_ok:
 print_out_of_bounds:
                                         ;; stack: array_len i         <- top            
     pushl .text_out_of_bounds_prefix
-    print_str
+    call print_str
 
     printu64                            ;; stack: array_len           <- top
     pushl .text_greater
-    print_str                          
+    call print_str                          
 
     printu64                             ;; stack:                    <- top
 
     pushl .text_dot
-    print_str
+    call print_str
 
     ret
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 print_str:
-    pushl           ;; stack:  str_mem                   <- top
-    dup             ;; stack: str_mem str_mem            <- top
+    dup 1           ;; stack: str_mem str_mem            <- top
     call array_len  ;; stack: str_mem array_len          <- top
     swap 1          ;; stack: array_len str_mem          <- top
-    array_ptr       ;; stack: array_len array_ptr        <- top
+    call array_ptr  ;; stack: array_len array_ptr        <- top
     puts            ;; stack:                            <- top
     ret 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -238,16 +270,16 @@ array_at:
     dup 1                        ;; stack:      i str_mem i str_mem     <- top
     call array_bounds_check      ;; stack:      i str_mem               <- top
                                 
-    array_ptr                    ;; stack:      i array_ptr             <- top
-    add     ;;                   ;; stack:      char_ptr                <- top 
-    read 8  ;;                   ;; stack:      char                    <- top
+    call array_ptr               ;; stack:      i array_ptr             <- top
+    add                          ;; stack:      char_ptr                <- top 
+    read8                        ;; stack:      char                    <- top
     ret
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;Function;;;;;;;;;;;;;
 char_as_digit:                              ;; stack: char     <- top
     push 48                 ;; ascii for 0  ;; stack: char '0' <- top
-    swap                                    ;; stack: '0' char <- top
+    swap 1                                  ;; stack: '0' char <- top
     sub                                     ;; stack: digit    <- top
     ret
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -256,8 +288,10 @@ char_as_digit:                              ;; stack: char     <- top
 
 
 .text_out_of_bounds_prefix: 
-    db "array index out of bounds [index > size]:";
+    db "array index out of bounds [index >= size]:";
 .text_greater: 
     db " >= ";
 .text_dot: 
     db ".";
+.newline:
+    db "\a";

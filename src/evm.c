@@ -44,21 +44,41 @@ void stack_push(Stack *s, Data d)
 
 Data stack_pop(Stack *s)
 {
-    assert(s->count > 0 && "stack_pop:  STACK UNDERFLOW");
+    if(s->count < 0){
+        fprintf(stderr, "stack_pop:  STACK UNDERFLOW\n");
+        exit(1);
+    }
+
     return s->items[--s->count];
 }
 
 Data stack_peek(Stack *s, size_t offset)
 {
-    assert(s->count > 0 && "stack_peek: STACK UNDERFLOW");
-    assert(s->count - offset - 1 <= s->count && "stack_peek: STACK ACCESS OUT OF BOUNDS");
+    if(s->count < 0){
+        fprintf(stderr, "stack_peek: STACK UNDERFLOW\n");
+        exit(1);
+    }
+
+    if(s->count - offset - 1 >= s->count){
+        fprintf(stderr, "stack_peek: STACK ACCESS OUT OF BOUNDS\n");
+        exit(1);
+    }
+
     return s->items[s->count - offset - 1];
 }
 
 void stack_swap(Stack *s, size_t offset)
 {   
-    assert(s->count > 0 && "stack_peek: STACK UNDERFLOW");
-    assert(s->count - offset - 1 <= s->count && "stack_peek: STACK ACCESS OUT OF BOUNDS");
+    if(s->count < 0){
+        fprintf(stderr, "stack_peek: STACK UNDERFLOW\n");
+        exit(1);
+    }
+
+    if(s->count - offset - 1 >= s->count){
+        fprintf(stderr, "stack_peek: STACK ACCESS OUT OF BOUNDS\n");
+        exit(1);
+    }
+
     size_t top = s->count - 1;
     size_t other = top - offset;
     Data t = s->items[top];
@@ -90,7 +110,10 @@ void evm_free(Evm* evm)
 
 Evm_Inst evm_next_inst(Evm *evm)
 {
-    assert(evm->ip < evm->program.count && "PROGRAM MEMORY ACCESS OUT OF BOUNDS");
+    if(evm->ip >= evm->program.count){
+        fprintf(stderr, "PROGRAM MEMORY ACCESS OUT OF BOUNDS  at instruction %s, IP = %zu.\n", inst_to_str[evm->program.items[evm->ip-1]], evm->ip);
+        exit(1);
+    }
     return evm->program.items[evm->ip++];
 }
 
@@ -123,62 +146,89 @@ void evm_swap(Evm *evm, size_t offset)
     stack_swap(&evm->stack, offset);
 }
 
+
 void evm_write8(Evm *evm, Addr dst, Data a)
 {
-    assert(dst < evm->memory_capacity && "DATA MEMEORY ACCESS OUT OF BOUNDS");
+    
+    if(dst >= evm->memory_capacity) {
+        fprintf(stderr, "DATA MEMEORY ACCESS OUT OF BOUNDS at instruction %s, IP = %zu.\n",inst_to_str[evm->program.items[evm->ip-1]], evm->ip);
+        exit(1);
+    }
     uint8_t *dst8 = (uint8_t *)evm->memory + dst;
     *dst8 = a;
 }
 
 void evm_write64(Evm *evm, Addr dst, Data a)
 {
-    assert(dst < evm->memory_capacity && "DATA MEMEORY ACCESS OUT OF BOUNDS");
+    if(dst >= evm->memory_capacity){
+        fprintf(stderr, "DATA MEMEORY ACCESS OUT OF BOUNDS  at instruction %s, IP = %zu.\n",inst_to_str[evm->program.items[evm->ip-1]], evm->ip);
+        exit(1);
+    } 
     evm->memory[dst] = a;
 }
 
 Data evm_read64(Evm *evm, Addr src)
 {
-    assert(src < evm->memory_capacity && "DATA MEMEORY ACCESS OUT OF BOUNDS");
+    if(src >= evm->memory_capacity){
+        fprintf(stderr, "DATA MEMEORY ACCESS OUT OF BOUNDS at instruction %s, IP = %zu.\n",inst_to_str[evm->program.items[evm->ip-1]], evm->ip);
+        exit(1);
+    }
     return evm->memory[src];
 }
 
 Data evm_read8(Evm *evm, Addr src)
 {
-    assert(src < evm->memory_capacity && "DATA MEMEORY ACCESS OUT OF BOUNDS");
+    if(src >= evm->memory_capacity){
+        fprintf(stderr, "DATA MEMEORY ACCESS OUT OF BOUNDS at instruction %s, IP = %zu.\n",inst_to_str[evm->program.items[evm->ip-1]], evm->ip);
+        exit(1);
+    }
     return *((uint8_t *)evm->memory + src);
 }
 
+bool evm_instruction_check_stack(Evm *evm, Evm_Inst inst, size_t expected)
+{
+    if(evm->stack.count < expected){
+        fprintf(stderr, "Insuficient operands in the stack to instruction %s. Expected: %zu; Found: %zu\n", inst_to_str[inst], expected, evm->stack.count);
+        exit(1);
+    }
+} 
 
 void evm_run(Evm *evm){  
     while(true){
         Evm_Inst inst = evm_next_inst(evm);
         switch(inst){
             case EVM_INST_PUSH: {
+                evm_instruction_check_stack(evm, inst, 0);
                 Data a = evm_next_inst(evm); 
                 evm_push(evm, a);
             }
             break;
             case  EVM_INST_POP: {
+                evm_instruction_check_stack(evm, inst, 1);
                 evm_pop(evm);
             }
             break;
             case EVM_INST_PUSH_HEAP_B: {
+                evm_instruction_check_stack(evm, inst, 0);
                 Data heap_base = evm->heap_base;
                 evm_push(evm, heap_base);
             }
             break;
             case EVM_INST_DUP: { 
+                evm_instruction_check_stack(evm, inst, 1);
                 Data offset = evm_next_inst(evm);
                 Data a = evm_peek(evm, offset);
                 evm_push(evm, a);
             }
             break;
             case EVM_INST_SWAP: { 
+                evm_instruction_check_stack(evm, inst, 0);
                 Data offset = evm_next_inst(evm);
                 evm_swap(evm, offset);
             }
             break;
             case EVM_INST_ADD:{
+                evm_instruction_check_stack(evm, inst, 2);
                 Data a = evm_pop(evm);
                 Data b = evm_pop(evm);  
                 Data s = a + b;
@@ -186,6 +236,7 @@ void evm_run(Evm *evm){
             }
             break;
             case EVM_INST_SUB:{
+                evm_instruction_check_stack(evm, inst, 2);
                 Data a = evm_pop(evm);
                 Data b = evm_pop(evm);  
                 Data s = a - b;
@@ -193,6 +244,7 @@ void evm_run(Evm *evm){
             } 
             break;
             case EVM_INST_MULTU: {
+                evm_instruction_check_stack(evm, inst, 2);
                 Data a = evm_pop(evm);
                 Data b = evm_pop(evm);  
                 Data s = a * b;
@@ -200,65 +252,76 @@ void evm_run(Evm *evm){
             } 
             break;
             case EVM_INST_GT: {
+                evm_instruction_check_stack(evm, inst, 2);
                 Data a = evm_pop(evm);
                 Data b = evm_pop(evm);
                 evm_push(evm, a > b);
             }
             break;
             case EVM_INST_LT: {
+                evm_instruction_check_stack(evm, inst, 2);
                 Data a = evm_pop(evm);
                 Data b = evm_pop(evm);
                 evm_push(evm, a < b);
             }
             break;
             case EVM_INST_EQ: {
+                evm_instruction_check_stack(evm, inst, 2);
                 Data a = evm_pop(evm);
                 Data b = evm_pop(evm);
                 evm_push(evm, a == b);
             }
             break;
             case EVM_INST_GE: {
+                evm_instruction_check_stack(evm, inst, 2);
                 Data a = evm_pop(evm);
                 Data b = evm_pop(evm);
                 evm_push(evm, a >= b);
             }
             break;
             case EVM_INST_LE: {
+                evm_instruction_check_stack(evm, inst, 2);
                 Data a = evm_pop(evm);
                 Data b = evm_pop(evm);
                 evm_push(evm, a <= b);
             }
             break;
             case EVM_INST_READ8: {
+                evm_instruction_check_stack(evm, inst, 1);
                 Addr src = (Addr) evm_pop(evm);
                 Data a = evm_read8(evm, src);
                 evm_push(evm, a);
             } 
             break;
             case EVM_INST_READ64: {
+                evm_instruction_check_stack(evm, inst, 1);
                 Addr src = (Addr) evm_pop(evm);
                 Data a = evm_read64(evm, src);
                 evm_push(evm, a);
             } 
             break;
             case EVM_INST_WRITE8: {
+                evm_instruction_check_stack(evm, inst, 2);
                 Addr dst = (Addr) evm_pop(evm);
                 Data a = evm_pop(evm);
                 evm_write8(evm, dst, a);
             } 
             break;
             case EVM_INST_WRITE64:{
+                evm_instruction_check_stack(evm, inst, 2);
                 Addr dst = (Addr) evm_pop(evm);
                 Data a = evm_pop(evm);
                 evm_write64(evm, dst, a);
             } 
             break;
             case EVM_INST_PRINTU: {
+                evm_instruction_check_stack(evm, inst, 1);
                 Data a = evm_pop(evm);
                 printf("%zu", a);
             }
             break;
             case EVM_INST_PUTS: {
+                evm_instruction_check_stack(evm, inst, 2);
                 Addr ptr = (Addr) evm_pop(evm);
                 Data size = evm_pop(evm);
                 fwrite(&evm->memory[ptr], size, 1, stdout);
@@ -266,19 +329,23 @@ void evm_run(Evm *evm){
             }
             break;
             case EVM_INST_CALL: {
+                evm_instruction_check_stack(evm, inst, 1);
                Addr func_addr = (Addr) evm_pop(evm); 
                evm_call(evm, func_addr);
             }
             break;
             case EVM_INST_RET:{
+                evm_instruction_check_stack(evm, inst, 0);
                evm_ret(evm);
             }
             break;
             case EVM_INST_JP: {
+                evm_instruction_check_stack(evm, inst, 1);
                 evm->ip = evm_pop(evm);
             }
             break;
             case EVM_INST_JPC: {
+                evm_instruction_check_stack(evm, inst, 2);
                 Data cond = evm_pop(evm);
                 Addr new_ip = (Addr) evm_pop(evm);
                 if(cond){
@@ -287,10 +354,12 @@ void evm_run(Evm *evm){
             }
             break;
             case EVM_INST_JR: {
+                evm_instruction_check_stack(evm, inst, 1);
                 evm->ip += evm_pop(evm);
             }
             break;
             case EVM_INST_JRC: {
+                evm_instruction_check_stack(evm, inst, 2);
                 Data cond = evm_pop(evm);
                 long offset = evm_pop(evm);
                 if(cond){
@@ -299,6 +368,7 @@ void evm_run(Evm *evm){
             }
             break;
             case EVM_INST_HALT: 
+            evm_instruction_check_stack(evm, inst, 0);
                 return;
 
             case EVM_INST_COUNT: 

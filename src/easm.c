@@ -400,10 +400,12 @@ void easm_tokenize(StringView src, Easm_Tokens *tokens, const char *filepath)
 
                 uint64_t num_operand;
                 StringView operand = sv_chop_left(&line);
-                expect_comment_or_empty(line, filepath, row, line.data - line_start);
+                
                 if(!strtou64(operand.data, &num_operand)){
                     log_error_and_exit("tokenizer: Expected a numeric operand", filepath, row, operand.data - line_start + 1);
                 } 
+
+                expect_comment_or_empty(line, filepath, row, line.data - line_start);
                 token.get.data = num_operand; 
             } else if ( sv_eq(opcode, sv_from_cstr("pushl"))||
                         sv_eq(opcode, sv_from_cstr("jp"))   ||
@@ -595,7 +597,11 @@ void easm_generate(Easm_Tokens tokens, Evm_Insts *program, Bytes *memory)
             }
         }
         if(!found) {
-            char message[] = "generator: Undefined label";
+            int n = snprintf(NULL, 0, "generator: Undefined label "SV_FMT, SV_ARG(token.get.label));
+            assert(n >= 1);
+            char *message = malloc(n+1);
+            memset(message, 0, n+1);
+            snprintf(message, n+1, "generator: Undefined label "SV_FMT, SV_ARG(token.get.label));
             log_error_and_exit(message, token.filepath, token.row, token.col);
         } 
     }
