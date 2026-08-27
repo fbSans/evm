@@ -70,12 +70,12 @@ Data stack_peek(Stack *s, size_t offset)
 void stack_swap(Stack *s, size_t offset)
 {   
     if(s->count < 0){
-        fprintf(stderr, "stack_peek: STACK UNDERFLOW\n");
+        fprintf(stderr, "stack_swap: STACK UNDERFLOW\n");
         exit(1);
     }
 
     if(s->count - offset - 1 >= s->count){
-        fprintf(stderr, "stack_peek: STACK ACCESS OUT OF BOUNDS\n");
+        fprintf(stderr, "stack_swap: STACK ACCESS OUT OF BOUNDS\n");
         exit(1);
     }
 
@@ -215,15 +215,15 @@ void evm_run(Evm *evm){
             }
             break;
             case EVM_INST_DUP: { 
-                evm_instruction_check_stack(evm, inst, 1);
                 Data offset = evm_next_inst(evm);
+                evm_instruction_check_stack(evm, inst, offset+1);
                 Data a = evm_peek(evm, offset);
                 evm_push(evm, a);
             }
             break;
             case EVM_INST_SWAP: { 
-                evm_instruction_check_stack(evm, inst, 0);
                 Data offset = evm_next_inst(evm);
+                evm_instruction_check_stack(evm, inst, offset+1);
                 evm_swap(evm, offset);
             }
             break;
@@ -336,7 +336,7 @@ void evm_run(Evm *evm){
             break;
             case EVM_INST_RET:{
                 evm_instruction_check_stack(evm, inst, 0);
-               evm_ret(evm);
+                evm_ret(evm);
             }
             break;
             case EVM_INST_JP: {
@@ -368,7 +368,6 @@ void evm_run(Evm *evm){
             }
             break;
             case EVM_INST_HALT: 
-            evm_instruction_check_stack(evm, inst, 0);
                 return;
 
             case EVM_INST_COUNT: 
