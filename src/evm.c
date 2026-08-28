@@ -297,7 +297,6 @@ void evm_run(Evm *evm){
                 evm_instruction_check_stack(evm, inst, 1);
                 Addr src = (Addr) evm_pop(evm);
                 Data a = evm_read64(evm, src);
-                printf("src: %zu data: %zu\n", src, a);
                 evm_push(evm, a);
             } 
             break;
@@ -318,7 +317,6 @@ void evm_run(Evm *evm){
             case EVM_INST_PRINTU: {
                 evm_instruction_check_stack(evm, inst, 1);
                 Data a = evm_pop(evm);
-                printf("%zu", a);
             }
             break;
             case EVM_INST_PUTS: {
