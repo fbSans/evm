@@ -24,6 +24,8 @@
  
 #ifdef HELPERS_REMOVE_PREFIX
     #define da_append                 hp_da_append
+    #define da_reserve                hp_da_reserve
+    #define da_align                  hp_da_align
     #define da_pop                    hp_da_pop
     #define da_remove_ord             hp_da_remove_ord
     #define da_remove                 hp_da_remove
@@ -83,7 +85,7 @@
 }while(0)
 
 #define TODO(msg) do {                                                                 \
-    fprintf(stderr, "todo: %s:%d %s: `%s`\n",__FILE__, __LINE__,  __func__, (msg));      \
+    fprintf(stderr, "todo: %s:%d %s: `%s`\n",__FILE__, __LINE__,  __func__, (msg));    \
     exit(1);                                                                           \
 }while(0)
 
@@ -96,23 +98,36 @@
 
 
 //Dynamic Array Macros
-#define hp_da_append(da, item) do {                                                      \
-    if((da)->count >= (da)->capacity){                                                 \
-        if((da)->capacity == 0) (da)->items = NULL;                                   \
-        (da)->capacity = ((da)->capacity == 0) ? HP_DA_INIT_CAP  : (da)->capacity * 2;   \
-        (da)->items = realloc((da)->items, (da)->capacity * sizeof(*(da)->items));    \
-        memset((da)->items + (da)->count, 0, (da)->capacity - (da)->count);             \
-    }                                                                                 \
-    (da)->items[(da)->count++] = item;\
+#define hp_da_append(da, item) do {                                                                             \
+    if((da)->count >= (da)->capacity){                                                                          \
+        if((da)->capacity == 0) (da)->items = NULL;                                                             \
+        (da)->capacity = ((da)->capacity == 0) ? HP_DA_INIT_CAP  : (da)->capacity * 2;                          \
+        (da)->items = realloc((da)->items, (da)->capacity * sizeof(*(da)->items));                              \
+        memset((da)->items + (da)->count, 0, ((da)->capacity - (da)->count) * sizeof(*(da)->items));            \
+    }                                                                                                           \
+    (da)->items[(da)->count++] = item;                                                                          \
 } while (0)
 
-#define hp_da_pop(da) do {                                                                \
-    if((da)->count > 0) (da)->count = (da)->count - 1;                                    \
-} while(0)                                                                             \
+#define hp_da_reserve(da, n) do {                                                                               \
+    if((da)->count + (n) + 1 > (da)->capacity){                                                                 \
+        (da)->capacity = ((da)->count + (n) + 1) * 2;                                                           \
+        (da)->items = realloc((da)->items, (da)->capacity * sizeof(*(da)->items));                              \
+        assert((da)->items != NULL);                                                                            \
+    }                                                                                                          \
+} while (0)
 
-#define hp_da_remove_ord(da, idx) do {                                                    \
-    assert((idx) > 0 && (idx) < (da)->count);                                           \
-    memcpy((da)->items + (idx), (da)->items + (idx) + 1, (da)->count - (idx) - 1);      \
+#define hp_da_align(da, alignment) do {                                                                         \
+        hp_da_reserve((da), (((da)->count + (alignment) - 1) & ~((alignment) - 1)) - (da)->count);              \
+        (da)->count = ((da)->count + (alignment) - 1) & ~((alignment) - 1);                                     \
+} while (0)
+
+#define hp_da_pop(da) do {                                                                  \
+    if((da)->count > 0) (da)->count = (da)->count - 1;                                      \
+} while(0)                                                                                  \
+
+#define hp_da_remove_ord(da, idx) do {                                                      \
+    assert((idx) > 0 && (idx) < (da)->count);                                               \
+    memcpy((da)->items + (idx), (da)->items + (idx) + 1, (da)->count - (idx) - 1);          \
     hp_da_pop((da));                                                                        \
 } while(0)
 
@@ -240,6 +255,7 @@ void hp_sb_append_cstrs_impl(hp_StringBuilder *sb, ...)
     va_end(args);
 }
 
+//TODO: deprecate this in favor of da_reserve
 void hp_sb_reserve(hp_StringBuilder *sb, size_t n){
     if(sb->count + n + 1 > sb->capacity){
         sb->capacity = (sb->count + n + 1) * 2;
