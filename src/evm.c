@@ -154,7 +154,7 @@ void evm_write8(Evm *evm, Addr dst, Data a)
         fprintf(stderr, "DATA MEMEORY ACCESS OUT OF BOUNDS at instruction %s, IP = %zu.\n",inst_to_str[evm->program.items[evm->ip-1]], evm->ip);
         exit(1);
     }
-    uint8_t *dst8 = (uint8_t *)evm->memory + dst;
+    uint8_t *dst8 = (uint8_t *)evm->memory + dst; //Here the whole memory is seen as array of bytes. (So the user must provide the offset in bytes)
     *dst8 = a;
 }
 
@@ -182,7 +182,7 @@ Data evm_read8(Evm *evm, Addr src)
         fprintf(stderr, "DATA MEMEORY ACCESS OUT OF BOUNDS at instruction %s, IP = %zu.\n",inst_to_str[evm->program.items[evm->ip-1]], evm->ip);
         exit(1);
     }
-    return *((uint8_t *)evm->memory + src);
+    return *(((uint8_t *)evm->memory) + src);
 }
 
 bool evm_instruction_check_stack(Evm *evm, Evm_Inst inst, size_t expected)
@@ -324,7 +324,7 @@ void evm_run(Evm *evm){
                 evm_instruction_check_stack(evm, inst, 2);
                 Addr ptr = (Addr) evm_pop(evm);
                 Data size = evm_pop(evm);
-                fwrite((char *)&evm->memory[ptr], size, 1, stdout);
+                fwrite((((char *)evm->memory) + ptr), size, 1, stdout); //Interpret memory as if where bytes.
                 fflush(stdout);
             }
             break;

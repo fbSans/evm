@@ -176,7 +176,7 @@ Parse_Result parseHex(StringView *input, Bytes *res)
         };
     }
          
-    char val = 16 * hex_value(hexchars.data[0]) + hex_value(hexchars.data[1]);
+    uint8_t val = 16 * hex_value(hexchars.data[0]) + hex_value(hexchars.data[1]);
     da_append(res, val);
     return (Parse_Result) {
         .ok = true,
@@ -569,6 +569,15 @@ void easm_generate(Easm_Tokens tokens, Evm_Insts *program, Bytes *memory)
                 da_append_array(memory, (const char *)(&token.get.bytes.count), sizeof(Data)); //acomodating the whole lenght in memor
                 da_append_array(memory, token.get.bytes.items, token.get.bytes.count);
                 da_align(memory, sizeof(Data));  // To avoid memory corruption for not respecting boundaries while writing in memory
+                
+#ifdef DEBUG_MEMORY
+                printf("Bytes: %4zu: ", old_size);
+                printf("%.4x ", token.get.bytes.count);
+                da_foreach(char *, it, &token.get.bytes) {
+                    printf("%x ", *it);
+                }
+                printf("\n");
+#endif //DEBUG_MEMORY
             }
             break;
             default:{
