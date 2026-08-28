@@ -317,6 +317,7 @@ void evm_run(Evm *evm){
             case EVM_INST_PRINTU: {
                 evm_instruction_check_stack(evm, inst, 1);
                 Data a = evm_pop(evm);
+                printf("%zu", a);
             }
             break;
             case EVM_INST_PUTS: {
