@@ -250,12 +250,11 @@ Parse_Result bytes_from_dq_string(StringView *input, Bytes *res){
             ret.message = arena_sprintf(&easm_arena, "unsupported escape character `\\%s`", *input->data);
             RETURN_DEFER(ret, ret);
         }
-
+        
         da_append(res, n);
         sv_take(input, skip);
 
     }
-
 defer:
     arena_restore(&easm_arena, mark);
     return ret;
@@ -306,7 +305,6 @@ Parse_Result parse_bytes(StringView *input, Bytes *res)
             /* "str" */
             sv_take(input, 1);
             bytes_from_dq_string(input, res);
-
             if(!expect_remove_char(input, '"')){
                 ret.ok = false;
                 ret.message = "Unclosed string literal";
@@ -346,9 +344,6 @@ defer:
     arena_restore(&easm_arena, mark);
     return ret;
 }
-
-
-
 
 
 static void expect_comment_or_empty(StringView sv, const char *filepath, size_t row, size_t col){
@@ -564,14 +559,16 @@ void easm_generate(Easm_Tokens tokens, Evm_Insts *program, Bytes *memory)
             }
             break;
             case EASM_TYPE_MEM_LABEL: {
-                token.get.address = memory->count;
+                token.get.address = memory->count / sizeof(Data);  // This is important because the data is what is addressed and not bytes
                 da_append(&labels, token);
                 //printf("%zu\n", token.get.address);
             }
             break;
             case EASM_TYPE_BYTES: {
-                da_append_array(memory, (const char *)(&token.get.bytes.count), sizeof(size_t)); //accomdating the hole lenght in memory
+                size_t old_size = memory->count;
+                da_append_array(memory, (const char *)(&token.get.bytes.count), sizeof(Data)); //acomodating the whole lenght in memor
                 da_append_array(memory, token.get.bytes.items, token.get.bytes.count);
+                da_align(memory, sizeof(Data));  // To avoid memory corruption for not respecting boundaries while writing in memory
             }
             break;
             default:{
@@ -606,6 +603,7 @@ void easm_generate(Easm_Tokens tokens, Evm_Insts *program, Bytes *memory)
         } 
     }
 
+    //TODO: return this
     free(labels.items);
     free(unresolved.items);
     free(names.items);

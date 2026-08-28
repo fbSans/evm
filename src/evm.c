@@ -91,7 +91,7 @@ void evm_init(Evm *evm, Evm_Insts program, const char *initial_data, size_t init
 {
     memset(evm, 0, sizeof(*evm));
     evm->program = program;
-    evm->memory_capacity = EVM_MEM_CAP > initial_data_size ? EVM_MEM_CAP : initial_data_size;
+    evm->memory_capacity = EVM_MEM_CAP > initial_data_size ? EVM_MEM_CAP : initial_data_size; //TODO: CREATE ALLOCATION MECHANISMS
     evm->memory = malloc(evm->memory_capacity);
     memset(evm->memory, 0, evm->memory_capacity);
     if(initial_data_size > 0 && initial_data){
@@ -297,6 +297,7 @@ void evm_run(Evm *evm){
                 evm_instruction_check_stack(evm, inst, 1);
                 Addr src = (Addr) evm_pop(evm);
                 Data a = evm_read64(evm, src);
+                printf("src: %zu data: %zu\n", src, a);
                 evm_push(evm, a);
             } 
             break;
@@ -324,7 +325,7 @@ void evm_run(Evm *evm){
                 evm_instruction_check_stack(evm, inst, 2);
                 Addr ptr = (Addr) evm_pop(evm);
                 Data size = evm_pop(evm);
-                fwrite(&evm->memory[ptr], size, 1, stdout);
+                fwrite((char *)&evm->memory[ptr], size, 1, stdout);
                 fflush(stdout);
             }
             break;
