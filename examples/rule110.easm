@@ -1,5 +1,15 @@
-jp main
+jp main2
 
+dump_stack:
+    printu64
+    jp dump_stack
+
+main2:
+    call r110_update_state
+    call r110_get_current_state_ptr
+    call show_top
+    call print_str
+    halt
 
 main:
     push 10                                 ;; stack: count                     <- top
@@ -11,6 +21,8 @@ main_loop:
     jpc end_main_loop
     call r110_get_current_state_ptr         ;; stack: count i state_ptr         <- top
     call print_str                          ;; stack: count i                   <- top
+    pushl .newline
+    call print_str
 
 
     call r110_update_state                  ;; stack: count i                   <- top
@@ -36,8 +48,7 @@ debug:
     db "000000000000000001";
 .r110_current_state:
     db 0x00;
-.r110_other_state:
-    db 0x00;
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;;; R110 Function ;;;;;;;;;;;;;
@@ -55,6 +66,7 @@ state_ptr_from_index_other:
 ;;;;;;;;;;;;;; R110 Function ;;;;;;;;;;;;;
 r110_get_current_state_ptr:
     pushl .r110_current_state
+    call array_ptr
     read8
     call state_ptr_from_index
     ret
@@ -81,7 +93,6 @@ r110_state_loop1:
     
     call array_len                  ;; stack:  i i state_len                <- top
 
-call debug
     push 1                          ;; stack:  i i state_len 1              <- top
     swap 1                          ;; stack:  i i 1 state_len              <- top
     sub                             ;; stack:  i i last_index               <- top
@@ -90,6 +101,8 @@ call debug
     dup 0                           ;; stack:  i i                          <- top                         
     dup 0                           ;; stack:  i i i                        <- top
     call r110_new_value             ;; stack:  i i new_value                <- top
+    push 48
+    add                             ;; stack:  i i new_value_char           <- top
     swap 1                          ;; stack:  i new_value i                <- top
     call r110_get_next_state_ptr    ;; stack:  i new_value i next_state     <- top
     add                             ;; stack:  i new_value (next_state+i)   <- top
@@ -215,6 +228,8 @@ array_len:
 array_ptr:
     push 1
     add
+    push 8
+    multu
     ret
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -223,13 +238,12 @@ array_bounds_check:
     ;; copy args for reporting
     dup 1                           ;; stack:      i str_mem i                  <- top
     dup 1                           ;; stack:      i str_mem i str_mem          <- top
-                                    
     call array_len                  ;; stack:      i str_mem i array_len        <- top
     gt                              ;; stack:      i str_mem (array_len > i)    <- top
-    jpc array_bounds_check_ok        ;; stack:      i str_mem                    <- top
-    swap 1                          ;; stack:      i str_mem                    <- top
+    jpc array_bounds_check_ok       ;; stack:      i str_mem                    <- top
     call array_len                  ;; stack:      i array_len                  <- top
-    call print_out_of_bounds        ;; stack:                                   <- top
+    swap 1                          ;; stack:      array_len i                  <- top
+    call print_out_of_bounds        ;; stack:                                   <- top                          
     halt                
 array_bounds_check_ok:  
     pop                             ;; stack:      i                            <- top
@@ -239,8 +253,8 @@ array_bounds_check_ok:
 
 ;;;;;;;;;;;;Function;;;;;;;;;;;;;
 print_out_of_bounds:
-                                        ;; stack: array_len i         <- top            
-    pushl .text_out_of_bounds_prefix
+                                        ;; stack: array_len i                  <- top            
+    pushl .text_out_of_bounds_prefix    ;; stack: array_len i text_mem         <- top  
     call print_str
 
     printu64                            ;; stack: array_len           <- top
@@ -252,21 +266,47 @@ print_out_of_bounds:
     pushl .text_dot
     call print_str
 
+    pushl .newline
+    call print_str
+
     ret
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;Function;;;;;;;;;;;;;
+;; Example of how to load bytes -
+load_bytes:
+    dup 0
+    call array_len
+    swap 1
+    call array_ptr
+    ret
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;Function;;;;;;;;;;;;;
 print_str:
-    dup 1           ;; stack: str_mem str_mem            <- top
-    call array_len  ;; stack: str_mem array_len          <- top
-    swap 1          ;; stack: array_len str_mem          <- top
-    call array_ptr  ;; stack: array_len array_ptr        <- top
+    call load_bytes
     puts            ;; stack:                            <- top
     ret 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;Function;;;;;;;;;;;;;
+print_new_line:
+    pushl .newline
+    call print_str
+    ret
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;Function;;;;;;;;;;;;;
+show_top:
+    dup 0
+    printu64
+    call print_new_line
+    ret
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;Function;;;;;;;;;;;;;
 array_at:
     ;; safety_check
-    dup 1                        ;; stack:      i str_mem               <- top
+    dup 1                        ;; stack:      i str_mem i              <- top
     dup 1                        ;; stack:      i str_mem i str_mem     <- top
     call array_bounds_check      ;; stack:      i str_mem               <- top
                                 
@@ -288,10 +328,10 @@ char_as_digit:                              ;; stack: char     <- top
 
 
 .text_out_of_bounds_prefix: 
-    db "array index out of bounds [index >= size]:";
+    db "ERROR: Array index out of bounds [index >= size]: ";
 .text_greater: 
     db " >= ";
 .text_dot: 
     db ".";
 .newline:
-    db "\a";
+    db '\n';

@@ -16,6 +16,8 @@ load-bytes:
     swap 1
     push 1
     add
+    push 8
+    multu
     ret
 
 .str:
