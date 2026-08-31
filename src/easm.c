@@ -461,7 +461,7 @@ void easm_generate(Easm_Tokens tokens, Evm_Insts *program, Bytes *memory)
     Indices unresolved = {0};
     Easm_Tokens names = {0};
     
-    
+    static_assert(EVM_INST_COUNT == 26, "Change in EVM_INST_COUNT");
     for(size_t i = 0; i < tokens.count ; ++i){
         //printf(SV_FMT"\n", SV_ARG(tokens.items[i].name));
         Easm_Token token = tokens.items[i];

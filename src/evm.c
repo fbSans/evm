@@ -8,26 +8,43 @@
 #include "evm.h"
 
 char *inst_to_str[EVM_INST_COUNT] = {
-    [EVM_INST_PUSH]    = "EVM_INST_PUSH",
-    [EVM_INST_DUP]     = "EVM_INST_DUP",
-    [EVM_INST_SWAP]    = "EVM_INST_SWAP",
-    [EVM_INST_ADD]    = "EVM_INST_ADD",
-    [EVM_INST_SUB]    = "EVM_INST_SUB",
-    [EVM_INST_MULTU]   = "EVM_INST_MULTU",
-    [EVM_INST_GT]      = "EVM_INST_GT",
-    [EVM_INST_LT]      = "EVM_INST_LT",
-    [EVM_INST_EQ]      = "EVM_INST_EQ",
-    [EVM_INST_GE]      = "EVM_INST_GE",
-    [EVM_INST_LE]      = "EVM_INST_LE",
-    [EVM_INST_READ64]  = "EVM_INST_READ64",
-    [EVM_INST_WRITE64] = "EVM_INST_WRITE64",
-    [EVM_INST_PRINTU]  = "EVM_INST_PRINTU",
-    [EVM_INST_JP]      = "EVM_INST_JP",
-    [EVM_INST_JPC]      = "EVM_INST_JPC",
-    [EVM_INST_JR]      = "EVM_INST_JR",
-    [EVM_INST_JRC]     = "EVM_INST_JRC",
-    [EVM_INST_HALT]    = "EVM_INST_HALT"
+
+    [EVM_INST_PUSH]         = "EVM_INST_PUSH",
+    [EVM_INST_POP]          = "EVM_INST_POP",
+    [EVM_INST_PUSH_HEAP_B]  = "EVM_INST_PUSH_HEAP_B",
+    [EVM_INST_DUP]          = "EVM_INST_DUP",
+    [EVM_INST_SWAP]         = "EVM_INST_SWAP",
+
+    [EVM_INST_ADD]          = "EVM_INST_ADD",
+    [EVM_INST_SUB]          = "EVM_INST_SUB",
+    [EVM_INST_MULTU]        = "EVM_INST_MULTU",
+
+    [EVM_INST_GT]           = "EVM_INST_GT",
+    [EVM_INST_LT]           = "EVM_INST_LT",
+    [EVM_INST_EQ]           = "EVM_INST_EQ",
+    [EVM_INST_GE]           = "EVM_INST_GE",
+    [EVM_INST_LE]           = "EVM_INST_LE",
+
+    [EVM_INST_READ8]        = "EVM_INST_READ8",
+    [EVM_INST_READ64]       = "EVM_INST_READ64",
+    [EVM_INST_WRITE8]       = "EVM_INST_WRITE8",
+    [EVM_INST_WRITE64]      = "EVM_INST_WRITE64",
+
+    [EVM_INST_PRINTU]       = "EVM_INST_PRINTU",
+    [EVM_INST_PUTS]         = "EVM_INST_PUTS",
+
+    [EVM_INST_CALL]         = "EVM_INST_CALL",
+    [EVM_INST_RET]          = "EVM_INST_RET",
+
+    [EVM_INST_JP]           = "EVM_INST_JP",
+    [EVM_INST_JPC]          = "EVM_INST_JPC",
+    [EVM_INST_JR]           = "EVM_INST_JR",
+    [EVM_INST_JRC]          = "EVM_INST_JRC",
+
+    [EVM_INST_HALT]         = "EVM_INST_HALT"
 };
+
+static_assert(EVM_INST_COUNT == 26, "Change in EVM_INST_COUNT");
 
 void dump_stack(const Stack *s)
 {
@@ -193,7 +210,8 @@ bool evm_instruction_check_stack(Evm *evm, Evm_Inst inst, size_t expected)
     }
 } 
 
-void evm_run(Evm *evm){  
+void evm_run(Evm *evm){ 
+    static_assert(EVM_INST_COUNT == 26, "Change in EVM_INST_COUNT"); 
     while(true){
         Evm_Inst inst = evm_next_inst(evm);
         switch(inst){
