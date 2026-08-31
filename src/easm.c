@@ -22,6 +22,7 @@ char *easm_instrunctions[] = {
     "call", "ret", "pushl",
     "push_heapb"
 };
+static_assert(EVM_INST_COUNT == 26, "Change in EVM_INST_COUNT");
 
 int is_easm_opcode(StringView name) 
 {
