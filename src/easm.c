@@ -44,7 +44,7 @@ typedef struct {
     char *items;
     size_t count;
     size_t capacity;
-} Bytes;
+} Easm_Bytes;
 
 typedef struct {
     Easm_TokenType type;
@@ -55,7 +55,7 @@ typedef struct {
         int64_t offset;
         uint64_t address;
         StringView label;
-        Bytes bytes;
+        Easm_Bytes bytes;
     } get;
     const char *filepath;
     size_t row;
@@ -89,6 +89,13 @@ typedef struct {
     bool ok;
     const char *message;
 } Parse_Result;
+
+typedef struct {
+    Evm_Insts program;
+    Easm_Bytes memory;
+    Easm_Tokens labels;
+    Easm_Tokens names;
+} Easm_Generator_Data;
 
 //// Globals
 Arena easm_arena = {0};
@@ -152,7 +159,7 @@ char hex_value(char c){
     return c - 'A';
 }
 
-Parse_Result parseHex(StringView *input, Bytes *res)
+Parse_Result parseHex(StringView *input, Easm_Bytes *res)
 {
     sv_take(input, 2); // remove 0x or 0X
     StringView candidate = sv_clone(*input);
@@ -232,7 +239,7 @@ char next_char(const char *input, bool *res)
     *res = true;
 }
 
-Parse_Result bytes_from_dq_string(StringView *input, Bytes *res){
+Parse_Result bytes_from_dq_string(StringView *input, Easm_Bytes *res){
     Arena_Mark mark = arena_Mark(&easm_arena);
     Parse_Result ret = {.ok = true, .message = ""};
     while(input->count > 0 && input->data[0] != '"'){
@@ -263,7 +270,7 @@ defer:
 
 
 
-Parse_Result parse_bytes(StringView *input, Bytes *res)
+Parse_Result parse_bytes(StringView *input, Easm_Bytes *res)
 {
     Arena_Mark mark = arena_Mark(&easm_arena);
     Parse_Result ret = {.ok = true, .message = ""};
@@ -456,11 +463,9 @@ void easm_tokenize(StringView src, Easm_Tokens *tokens, const char *filepath)
 
 //Tokens here must be all corresponding to instructions
 // No support for string literals in instructions or as instructions
-void easm_generate(Easm_Tokens tokens, Evm_Insts *program, Bytes *memory)
+void easm_generate(Easm_Tokens tokens, Easm_Generator_Data *gen)
 {
-    Easm_Tokens labels = {0};
     Indices unresolved = {0};
-    Easm_Tokens names = {0};
     
     static_assert(EVM_INST_COUNT == 26, "Change in EVM_INST_COUNT");
     for(size_t i = 0; i < tokens.count ; ++i){
@@ -469,79 +474,79 @@ void easm_generate(Easm_Tokens tokens, Evm_Insts *program, Bytes *memory)
         switch(token.type){
             case EASM_TYPE_INST:{
                 if(sv_eq(token.name, sv_from_cstr("push"))){
-                    da_append(program, EVM_INST_PUSH);
-                    da_append(program, token.get.data);
+                    da_append(&gen->program, EVM_INST_PUSH);
+                    da_append(&gen->program, token.get.data);
                 } else if (sv_eq(token.name, sv_from_cstr("push_heapb"))){
-                     da_append(program, EVM_INST_PUSH_HEAP_B);
+                     da_append(&gen->program, EVM_INST_PUSH_HEAP_B);
                 } else if (sv_eq(token.name, sv_from_cstr("pushl"))){
-                    da_append(&names, token);
-                    da_append(&unresolved, program->count + 1);
-                    da_append(program, EVM_INST_PUSH);
-                    da_append(program, UINT32_MAX); //placeholder (check it later)       
+                    da_append(&gen->names, token);
+                    da_append(&unresolved, gen->program.count + 1);
+                    da_append(&gen->program, EVM_INST_PUSH);
+                    da_append(&gen->program, UINT32_MAX); //placeholder (check it later)       
                 }  else if (sv_eq(token.name, sv_from_cstr("pop"))){
-                    da_append(program, EVM_INST_POP);
+                    da_append(&gen->program, EVM_INST_POP);
                 } else if(sv_eq(token.name, sv_from_cstr("dup"))) {
-                    da_append(program, EVM_INST_DUP);
-                    da_append(program, token.get.data);
+                    da_append(&gen->program, EVM_INST_DUP);
+                    da_append(&gen->program, token.get.data);
                 } else if(sv_eq(token.name, sv_from_cstr("swap"))) {
-                    da_append(program, EVM_INST_SWAP);
-                    da_append(program, token.get.data);
+                    da_append(&gen->program, EVM_INST_SWAP);
+                    da_append(&gen->program, token.get.data);
                 } else if(sv_eq(token.name, sv_from_cstr("add"))) {
-                    da_append(program, EVM_INST_ADD);
+                    da_append(&gen->program, EVM_INST_ADD);
                 } else if(sv_eq(token.name, sv_from_cstr("sub"))) {
-                    da_append(program, EVM_INST_SUB);
+                    da_append(&gen->program, EVM_INST_SUB);
                 } else if(sv_eq(token.name, sv_from_cstr("multu"))) {
-                    da_append(program, EVM_INST_MULTU);
+                    da_append(&gen->program, EVM_INST_MULTU);
                 } else if(sv_eq(token.name, sv_from_cstr("eq"))) {
-                    da_append(program, EVM_INST_EQ);
+                    da_append(&gen->program, EVM_INST_EQ);
                 }  else if(sv_eq(token.name, sv_from_cstr("gt"))) {
-                    da_append(program, EVM_INST_GT);
+                    da_append(&gen->program, EVM_INST_GT);
                 }  else if(sv_eq(token.name, sv_from_cstr("ge"))) {
-                    da_append(program, EVM_INST_GE);
+                    da_append(&gen->program, EVM_INST_GE);
                 } else if(sv_eq(token.name, sv_from_cstr("lt"))) {
-                    da_append(program, EVM_INST_LT);
+                    da_append(&gen->program, EVM_INST_LT);
                 }  else if(sv_eq(token.name, sv_from_cstr("le"))) {
-                    da_append(program, EVM_INST_LE);
+                    da_append(&gen->program, EVM_INST_LE);
                 } else if(sv_eq(token.name, sv_from_cstr("printu64"))) {
-                    da_append(program, EVM_INST_PRINTU);
+                    da_append(&gen->program, EVM_INST_PRINTU);
                 } else if(sv_eq(token.name, sv_from_cstr("ret"))) {
-                    da_append(program, EVM_INST_RET);
+                    da_append(&gen->program, EVM_INST_RET);
                 } else if ( sv_eq(token.name, sv_from_cstr("call"))){
-                    da_append(&names, token);
-                    da_append(&unresolved, program->count + 1);
-                    da_append(program, EVM_INST_PUSH);
-                    da_append(program, UINT32_MAX); //placeholder (check it later)
-                    da_append(program, EVM_INST_CALL);
+                    da_append(&gen->names, token);
+                    da_append(&unresolved, gen->program.count + 1);
+                    da_append(&gen->program, EVM_INST_PUSH);
+                    da_append(&gen->program, UINT32_MAX); //placeholder (check it later)
+                    da_append(&gen->program, EVM_INST_CALL);
                 } else if ( sv_eq(token.name, sv_from_cstr("jp"))){
-                    da_append(&names, token);
-                    da_append(&unresolved, program->count + 1);
-                    da_append(program, EVM_INST_PUSH);
-                    da_append(program, UINT32_MAX); //placeholder (check it later)
-                    da_append(program, EVM_INST_JP);
+                    da_append(&gen->names, token);
+                    da_append(&unresolved, gen->program.count + 1);
+                    da_append(&gen->program, EVM_INST_PUSH);
+                    da_append(&gen->program, UINT32_MAX); //placeholder (check it later)
+                    da_append(&gen->program, EVM_INST_JP);
                 } else if ( sv_eq(token.name, sv_from_cstr("jpc"))){
-                    da_append(&names, token);
-                    da_append(&unresolved, program->count + 1);
-                    da_append(program, EVM_INST_PUSH);
-                    da_append(program, UINT32_MAX); //placeholder (check it later)
-                    da_append(program, EVM_INST_SWAP);
-                    da_append(program, 1);
-                    da_append(program, EVM_INST_JPC);
+                    da_append(&gen->names, token);
+                    da_append(&unresolved, gen->program.count + 1);
+                    da_append(&gen->program, EVM_INST_PUSH);
+                    da_append(&gen->program, UINT32_MAX); //placeholder (check it later)
+                    da_append(&gen->program, EVM_INST_SWAP);
+                    da_append(&gen->program, 1);
+                    da_append(&gen->program, EVM_INST_JPC);
                 } else if ( sv_eq(token.name, sv_from_cstr("jr"))){
                     UNIMPLEMENTED;
                 } else if ( sv_eq(token.name, sv_from_cstr("jrc"))){
                     UNIMPLEMENTED;
                 } else if(sv_eq(token.name, sv_from_cstr("puts"))) {
-                    da_append(program, EVM_INST_PUTS);
+                    da_append(&gen->program, EVM_INST_PUTS);
                 } else if(sv_eq(token.name, sv_from_cstr("write8"))) {
-                    da_append(program, EVM_INST_WRITE8);
+                    da_append(&gen->program, EVM_INST_WRITE8);
                 }else if(sv_eq(token.name, sv_from_cstr("write64"))) {
-                    da_append(program, EVM_INST_WRITE64);
+                    da_append(&gen->program, EVM_INST_WRITE64);
                 }  else if(sv_eq(token.name, sv_from_cstr("read8"))) {
-                    da_append(program, EVM_INST_READ8);
+                    da_append(&gen->program, EVM_INST_READ8);
                 } else if(sv_eq(token.name, sv_from_cstr("read64"))) {
-                    da_append(program, EVM_INST_READ64);
+                    da_append(&gen->program, EVM_INST_READ64);
                 } else if(sv_eq(token.name, sv_from_cstr("halt"))) {
-                    da_append(program, EVM_INST_HALT);
+                    da_append(&gen->program, EVM_INST_HALT);
                 } else {
                     printf(SV_FMT", %zu\n", SV_ARG(token.name), token.name.count);
                     char message[1024] = {0};
@@ -554,22 +559,22 @@ void easm_generate(Easm_Tokens tokens, Evm_Insts *program, Bytes *memory)
             } 
             break;
             case EASM_TYPE_LABEL: {
-                token.get.address = program->count;
-                da_append(&labels, token);
+                token.get.address = gen->program.count;
+                da_append(&gen->labels, token);
                 //printf("%zu\n", token.get.address);
             }
             break;
             case EASM_TYPE_MEM_LABEL: {
-                token.get.address = memory->count / sizeof(Data);  // This is important because the data is what is addressed and not bytes
-                da_append(&labels, token);
+                token.get.address = gen->memory.count / sizeof(Data);  // This is important because the data is what is addressed and not bytes
+                da_append(&gen->labels, token);
                 //printf("%zu\n", token.get.address);
             }
             break;
             case EASM_TYPE_BYTES: {
-                size_t old_size = memory->count;
-                da_append_array(memory, (const char *)(&token.get.bytes.count), sizeof(Data)); //acomodating the whole lenght in memor
-                da_append_array(memory, token.get.bytes.items, token.get.bytes.count);
-                da_align(memory, sizeof(Data));  // To avoid memory corruption for not respecting boundaries while writing in memory
+                size_t old_size = gen->memory.count;
+                da_append_array(&gen->memory, (const char *)(&token.get.bytes.count), sizeof(Data)); //acomodating the whole lenght in memor
+                da_append_array(&gen->memory, token.get.bytes.items, token.get.bytes.count);
+                da_align(&gen->memory, sizeof(Data));  // To avoid memory corruption for not respecting boundaries while writing in memory
                 
 #ifdef DEBUG_MEMORY
                 printf("Bytes: %4zu: ", old_size);
@@ -590,16 +595,16 @@ void easm_generate(Easm_Tokens tokens, Evm_Insts *program, Bytes *memory)
     //Second pass
     for(size_t i = 0; i < unresolved.count; ++i){
         size_t replacement_idx = unresolved.items[i];
-        Easm_Token token = names.items[i]; // for name and localtion
+        Easm_Token token = gen->names.items[i]; // for name and localtion
         
-        assert(program->items[replacement_idx] == UINT32_MAX); 
+        assert(gen->program.items[replacement_idx] == UINT32_MAX); 
         bool found = false;
-        for(size_t j = 0; j < labels.count; ++j){
-            Easm_Token label = labels.items[j];
+        for(size_t j = 0; j < gen->labels.count; ++j){
+            Easm_Token label = gen->labels.items[j];
             assert(label.type == EASM_TYPE_LABEL || label.type == EASM_TYPE_MEM_LABEL); 
             if(sv_eq(token.get.label, label.name)){
                 found = true;
-                program->items[replacement_idx] = label.get.address;
+                gen->program.items[replacement_idx] = label.get.address;
                 break;
             }
         }
@@ -613,10 +618,8 @@ void easm_generate(Easm_Tokens tokens, Evm_Insts *program, Bytes *memory)
         } 
     }
 
-    //TODO: return this
-    free(labels.items);
+
     free(unresolved.items);
-    free(names.items);
 }
 
 
@@ -637,20 +640,23 @@ int main(int argc, char **argv)
    
 
     Easm_Tokens easm_tokens = {0};
-    Evm_Insts evm_program = {0};
-    Bytes byte_memory = {0};
+    Easm_Generator_Data gen = {0};
+
    
     
     easm_tokenize(src, &easm_tokens, filepath);
-    easm_generate(easm_tokens, &evm_program, &byte_memory);
+    easm_generate(easm_tokens, &gen);
 
     
     Evm evm = {0};
-    evm_init(&evm, evm_program, byte_memory.items, byte_memory.count);
+    evm_init(&evm, gen.program, gen.memory.items, gen.memory.count);
     evm_run(&evm);
     evm_free(&evm);
-    free(evm_program.items);
     free(easm_tokens.items);
+    free(gen.program.items);
+    free(gen.memory.items);
+    free(gen.names.items);
+    free(gen.labels.items);
     free(sb.items);
     return 0;
 }
