@@ -605,7 +605,6 @@ void easm_generate(Easm_Tokens tokens, Easm_Generator_Data *gen)
 
 void easm_resolve_names(Easm_Generator_Data *gen){
     //Second pass
-    //This pass will be taken outside
     for(size_t i = 0; i < gen->unresolved.count; ++i){
         size_t replacement_idx = gen->unresolved.items[i];
         Easm_Token label_reference = gen->references.items[i]; // for name and localtion
