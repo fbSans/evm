@@ -94,8 +94,19 @@ typedef struct {
     Evm_Insts program;
     Easm_Bytes memory;
     Easm_Tokens labels;
-    Easm_Tokens names;
+    Easm_Tokens references;  //token holding reference to labels
+    Indices unresolved; // parallel array to references, holds indices where the patch must happen in the program
 } Easm_Generator_Data;
+
+void easm_generator_data_free(Easm_Generator_Data *gen){
+    if(gen == NULL) return;
+    free(gen->program.items);
+    free(gen->memory.items);
+    free(gen->references.items);
+    free(gen->unresolved.items);
+    free(gen->labels.items);
+    memset((void *)gen, 0, sizeof(*gen));
+}
 
 //// Globals
 Arena easm_arena = {0};
@@ -464,9 +475,7 @@ void easm_tokenize(StringView src, Easm_Tokens *tokens, const char *filepath)
 //Tokens here must be all corresponding to instructions
 // No support for string literals in instructions or as instructions
 void easm_generate(Easm_Tokens tokens, Easm_Generator_Data *gen)
-{
-    Indices unresolved = {0};
-    
+{    
     static_assert(EVM_INST_COUNT == 26, "Change in EVM_INST_COUNT");
     for(size_t i = 0; i < tokens.count ; ++i){
         //printf(SV_FMT"\n", SV_ARG(tokens.items[i].name));
@@ -479,8 +488,8 @@ void easm_generate(Easm_Tokens tokens, Easm_Generator_Data *gen)
                 } else if (sv_eq(token.name, sv_from_cstr("push_heapb"))){
                      da_append(&gen->program, EVM_INST_PUSH_HEAP_B);
                 } else if (sv_eq(token.name, sv_from_cstr("pushl"))){
-                    da_append(&gen->names, token);
-                    da_append(&unresolved, gen->program.count + 1);
+                    da_append(&gen->references, token);
+                    da_append(&gen->unresolved, gen->program.count + 1);
                     da_append(&gen->program, EVM_INST_PUSH);
                     da_append(&gen->program, UINT32_MAX); //placeholder (check it later)       
                 }  else if (sv_eq(token.name, sv_from_cstr("pop"))){
@@ -512,20 +521,20 @@ void easm_generate(Easm_Tokens tokens, Easm_Generator_Data *gen)
                 } else if(sv_eq(token.name, sv_from_cstr("ret"))) {
                     da_append(&gen->program, EVM_INST_RET);
                 } else if ( sv_eq(token.name, sv_from_cstr("call"))){
-                    da_append(&gen->names, token);
-                    da_append(&unresolved, gen->program.count + 1);
+                    da_append(&gen->references, token);
+                    da_append(&gen->unresolved, gen->program.count + 1);
                     da_append(&gen->program, EVM_INST_PUSH);
                     da_append(&gen->program, UINT32_MAX); //placeholder (check it later)
                     da_append(&gen->program, EVM_INST_CALL);
                 } else if ( sv_eq(token.name, sv_from_cstr("jp"))){
-                    da_append(&gen->names, token);
-                    da_append(&unresolved, gen->program.count + 1);
+                    da_append(&gen->references, token);
+                    da_append(&gen->unresolved, gen->program.count + 1);
                     da_append(&gen->program, EVM_INST_PUSH);
                     da_append(&gen->program, UINT32_MAX); //placeholder (check it later)
                     da_append(&gen->program, EVM_INST_JP);
                 } else if ( sv_eq(token.name, sv_from_cstr("jpc"))){
-                    da_append(&gen->names, token);
-                    da_append(&unresolved, gen->program.count + 1);
+                    da_append(&gen->references, token);
+                    da_append(&gen->unresolved, gen->program.count + 1);
                     da_append(&gen->program, EVM_INST_PUSH);
                     da_append(&gen->program, UINT32_MAX); //placeholder (check it later)
                     da_append(&gen->program, EVM_INST_SWAP);
@@ -591,37 +600,37 @@ void easm_generate(Easm_Tokens tokens, Easm_Generator_Data *gen)
             }
         }
     }
+}
 
+
+void easm_resolve_names(Easm_Generator_Data *gen){
     //Second pass
-    for(size_t i = 0; i < unresolved.count; ++i){
-        size_t replacement_idx = unresolved.items[i];
-        Easm_Token token = gen->names.items[i]; // for name and localtion
+    //This pass will be taken outside
+    for(size_t i = 0; i < gen->unresolved.count; ++i){
+        size_t replacement_idx = gen->unresolved.items[i];
+        Easm_Token label_reference = gen->references.items[i]; // for name and localtion
         
         assert(gen->program.items[replacement_idx] == UINT32_MAX); 
         bool found = false;
         for(size_t j = 0; j < gen->labels.count; ++j){
             Easm_Token label = gen->labels.items[j];
             assert(label.type == EASM_TYPE_LABEL || label.type == EASM_TYPE_MEM_LABEL); 
-            if(sv_eq(token.get.label, label.name)){
+            if(sv_eq(label_reference.get.label, label.name)){
                 found = true;
                 gen->program.items[replacement_idx] = label.get.address;
                 break;
             }
         }
         if(!found) {
-            int n = snprintf(NULL, 0, "generator: Undefined label "SV_FMT, SV_ARG(token.get.label));
+            int n = snprintf(NULL, 0, "generator: Undefined label "SV_FMT, SV_ARG(label_reference.get.label));
             assert(n >= 1);
             char *message = malloc(n+1);
             memset(message, 0, n+1);
-            snprintf(message, n+1, "generator: Undefined label "SV_FMT, SV_ARG(token.get.label));
-            log_error_and_exit(message, token.filepath, token.row, token.col);
+            snprintf(message, n+1, "generator: Undefined label "SV_FMT, SV_ARG(label_reference.get.label));
+            log_error_and_exit(message, label_reference.filepath, label_reference.row, label_reference.col);
         } 
     }
-
-
-    free(unresolved.items);
 }
-
 
 
 int main(int argc, char **argv)
@@ -643,9 +652,15 @@ int main(int argc, char **argv)
     Easm_Generator_Data gen = {0};
 
    
-    
+    //Now you can tokenize a source
     easm_tokenize(src, &easm_tokens, filepath);
+    
+    //Generate instructions with unresolved labels for all you token streams
     easm_generate(easm_tokens, &gen);
+    
+    //TODO: introduce local labels
+    //Resolve names in a second pass after collecting all your sources
+    easm_resolve_names(&gen);
 
     
     Evm evm = {0};
@@ -653,10 +668,7 @@ int main(int argc, char **argv)
     evm_run(&evm);
     evm_free(&evm);
     free(easm_tokens.items);
-    free(gen.program.items);
-    free(gen.memory.items);
-    free(gen.names.items);
-    free(gen.labels.items);
+    easm_generator_data_free(&gen);
     free(sb.items);
     return 0;
 }
